@@ -626,21 +626,11 @@ async function init() {
     selectable: true,
     selectMirror: true,
     unselectAuto: true,
-    /** Sichtbar bis zur verfügbaren Zelle (statt fester 4) – weniger künstliches „+1 more“ */
-    dayMaxEvents: true,
+    dayMaxEvents: 4,
     weekNumbers: false,
-    moreLinkText(arg) {
-      let n = 0;
-      if (typeof arg === "number") n = arg;
-      else if (arg && typeof arg === "object" && typeof arg.num === "number") n = arg.num;
-      if (n < 1) return "weitere anzeigen";
-      return n === 1 ? "noch 1" : `noch ${n}`;
-    },
     views: {
-      dayGridMonth: { dayMaxEvents: true },
-      dayGridWeek: { dayMaxEvents: true },
+      dayGridWeek: { dayMaxEvents: 5 },
       multiMonthYear: {
-        dayMaxEvents: true,
         multiMonthMaxColumns: 3,
         multiMonthMinWidth: 200,
       },

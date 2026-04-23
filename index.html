@@ -328,25 +328,11 @@
       padding: 1rem 1rem 1.5rem;
     }
     .tk-view-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    /* Eine runde Kachel – gleiches Prinzip wie die Monatskarten in der Jahresansicht */
-    .tk-calendar-wrap {
-      min-height: 640px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: var(--bg);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
+    .tk-calendar-wrap { min-height: 640px; }
     .tk-calendar-wrap .fc {
       position: relative;
       z-index: 0;
       max-width: 100%;
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
-    }
-    .tk-calendar-wrap .fc .fc-view-harness {
-      background: transparent;
     }
 
     /* Modals: SOP-Pattern (overlay + box + Titelzeile) */
@@ -701,50 +687,17 @@
       border-radius: 8px;
     }
 
-    /* FullCalendar: ROOTS – moderne Oberfläche
-       Kein vollflächiger „Fleck“ für heute (wirkt oft crème/gelb) – stattdessen dezenter Rand */
-    .fc {
-      --fc-border-color: var(--line);
-      --fc-today-bg-color: transparent;
-      --fc-button-bg: var(--brand);
-      --fc-button-border-color: var(--brand);
-      --fc-button-text-color: #fff;
-      --fc-button-active-bg: var(--brand-dark);
-      --fc-page-bg-color: transparent;
+    /* FullCalendar: ROOTS – moderne Oberfläche */
+    .fc { --fc-border-color: var(--line); --fc-today-bg-color: var(--brand-light); --fc-button-bg: var(--brand);
+      --fc-button-border-color: var(--brand); --fc-button-text-color: #fff; --fc-button-active-bg: var(--brand-dark);
       --fc-font-family: var(--font-ui);
-      font-size: 0.88rem;
-    }
-    .fc .fc-day-today { background: transparent !important; }
-    .fc .fc-day-today .fc-daygrid-day-frame { box-shadow: inset 0 0 0 1.5px var(--brand); border-radius: 4px; }
-    .fc .fc-scroller-harness { border-radius: 0; }
+      font-size: 0.88rem; }
+    .fc .fc-scroller-harness { border-radius: 12px; }
     .fc .fc-daygrid-day-frame { min-height: 3.1rem; }
     .fc .fc-daygrid-day-top { padding: 0.2rem 0.35rem; }
     .fc .fc-daygrid-day-number { font-weight: 600; font-size: 0.8rem; color: var(--muted); }
     .fc .fc-day-today .fc-daygrid-day-number { color: var(--brand); }
-    .fc .fc-day-other { background: transparent !important; }
-    .fc .fc-day-other .fc-daygrid-day-top { opacity: 0.38; }
-    .fc .fc-day-other .fc-daygrid-day-number { color: var(--muted); }
-    .fc .fc-day-sat:not(.fc-day-today),
-    .fc .fc-day-sun:not(.fc-day-today) { background: transparent !important; }
     .fc .fc-col-header-cell { background: var(--status-bg); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
-    /* „Weitere“-Link (Text per moreLinkText in app.js, z. B. „noch 2“) */
-    a.fc-daygrid-more-link,
-    a.fc-more-link {
-      font-weight: 600;
-      font-size: 0.72rem;
-      color: var(--brand) !important;
-      text-decoration: none;
-      display: inline-block;
-      margin-top: 0.1rem;
-      padding: 0.15rem 0.4rem 0.12rem;
-      background: var(--status-bg) !important;
-      border: 1px solid var(--line) !important;
-      border-radius: 6px;
-    }
-    a.fc-daygrid-more-link:hover,
-    a.fc-more-link:hover {
-      background: var(--brand-light) !important;
-    }
     .fc .fc-h-event, .fc .fc-v-event { border: none; border-radius: 8px; padding: 2px 6px; font-weight: 600; font-size: 0.8rem; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15); }
     .fc .fc-h-event { margin-top: 2px; }
     .fc .fc-daygrid-day-events { margin-bottom: 0.1rem; }
@@ -755,9 +708,9 @@
     .fc .fc-daygrid-day-bg .fc-h-event, .fc .fc-h-event, .fc .fc-h-event { box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06); }
     .fc .fc-v-event { border: none; }
 
-    /* Woche (Ganztages-Raster): luftig, gleiche heute-Darstellung wie Monat */
+    /* Woche (Ganztages-Raster): luftig, moderne Tages-Header */
     .fc .fc-dayGridWeek-view {
-      --fc-today-bg-color: transparent;
+      --fc-today-bg-color: rgba(32, 110, 251, 0.09);
     }
     .fc .fc-dayGridWeek-view .fc-daygrid-day-frame { min-height: 8rem; }
     .fc .fc-dayGridWeek-view .fc-daygrid-day { padding: 0.2rem; }
@@ -767,7 +720,7 @@
     .fc .fc-dayGridWeek-view .fc-daygrid-day-events { min-height: 1.2rem; }
 
     /* Jahresansicht: nebeneinander + pro Monat Karte, Raster wie Monatsansicht */
-    .fc .fc-multiMonthYear-view { --fc-today-bg-color: transparent; }
+    .fc .fc-multiMonthYear-view { --fc-today-bg-color: var(--brand-light); }
     .fc .fc-multimonth {
       display: grid !important;
       grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
@@ -783,8 +736,6 @@
     @media (max-width: 640px) {
       .fc .fc-multimonth { grid-template-columns: minmax(0, 1fr) !important; }
     }
-    .tk-calendar-wrap .fc .fc-scrollgrid { border: none !important; }
-    .tk-calendar-wrap .fc .fc-theme-standard .fc-scrollgrid { border: none !important; }
     .fc .fc-multimonth .fc-multimonth-month,
     .fc .fc-multimonth-month,
     .fc .fc-multimonth > * {
@@ -793,7 +744,7 @@
       background: var(--bg);
       border: 1px solid var(--line);
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+      box-shadow: var(--shadow);
       overflow: hidden;
     }
     .fc .fc-multimonth .fc-multimonth-title {
@@ -819,8 +770,6 @@
       font-size: 0.8rem;
       color: var(--muted);
     }
-    .fc .fc-multimonth .fc-day-today { background: transparent !important; }
-    .fc .fc-multimonth .fc-day-today .fc-daygrid-day-frame { box-shadow: inset 0 0 0 1.5px var(--brand); border-radius: 4px; }
     .fc .fc-multimonth .fc-day-today .fc-daygrid-day-number { color: var(--brand); }
     .fc .fc-multimonth .fc-col-header-cell,
     .fc .fc-multimonth th.fc-col-header-cell {
