@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ROOTS KALENDER · Team-Abwesenheiten</title>
+  <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/circular-std" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.10/main.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.10/main.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid@6.1.10/main.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fullcalendar/multimonth@6.1.10/main.min.css" />
+  <style>
+    :root {
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #e2e8f0;
+      --brand: #206efb;
+      --brand-light: #eff6ff;
+      --brand-dark: #165fd9;
+      --danger: #dc2626;
+      --success: #10b981;
+      --status-bg: #f8fafc;
+      --status-border: #94a3b8;
+      --bg: #ffffff;
+      --app-bg: #f4f7fb;
+      --shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+      --radius: 16px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ink: #f1f5f9;
+        --muted: #94a3b8;
+        --line: #334155;
+        --brand: #3b82f6;
+        --brand-light: rgba(59, 130, 246, 0.2);
+        --brand-dark: #2563eb;
+        --status-bg: #1e293b;
+        --status-border: #475569;
+        --bg: #0f172a;
+        --app-bg: #020617;
+        --shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+      }
+      .tk-search i { color: var(--muted) !important; }
+      .fc-theme-standard .fc-scrollgrid, .fc-theme-standard td, .fc-theme-standard th { border-color: var(--line) !important; }
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--app-bg);
+      color: var(--ink);
+      font-family: "Circular Std", system-ui, sans-serif;
+    }
+
+    .tk-shell {
+      max-width: 1800px;
+      width: 98%;
+      margin: 0 auto;
+      padding: 2rem 1rem 3rem;
+    }
+
+    /* Header */
+    .tk-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .tk-header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      min-width: 0;
+    }
+    .tk-logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      object-fit: cover;
+      background: var(--bg);
+      box-shadow: 0 0 0 1px var(--line);
+    }
+    .tk-wordmark {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+    .tk-title-row {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .tk-title-roots { color: var(--ink); }
+    .tk-title-kal { color: var(--brand); }
+    .tk-subtitle {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .tk-header-divider {
+      width: 1px;
+      height: 36px;
+      background: var(--line);
+      display: none;
+    }
+    @media (min-width: 600px) {
+      .tk-header-divider { display: block; }
+    }
+    .tk-header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .tk-search {
+      position: relative;
+      width: 240px;
+      max-width: 100%;
+    }
+    .tk-search i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 1.1rem;
+      pointer-events: none;
+    }
+    .tk-search input {
+      width: 100%;
+      padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 0.88rem;
+    }
+    .tk-search input:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px var(--brand-light);
+    }
+
+    #sync-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.8rem;
+      color: var(--success);
+      background: var(--status-bg);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0.35rem 0.7rem;
+    }
+    #sync-badge.is-offline { color: var(--danger); }
+    .sync-label { font-weight: 600; }
+
+    .btn-save {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.1rem;
+      background: var(--brand);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.88rem;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-save:hover { background: var(--brand-dark); }
+
+    .tk-view-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .section-label {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+    .tk-view-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .btn-revision {
+      padding: 0.5rem 0.9rem;
+      background: var(--status-bg);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .btn-revision:hover { background: var(--line); }
+    .btn-revision[aria-pressed="true"] {
+      border-color: var(--brand);
+      background: var(--brand-light);
+      color: var(--brand);
+    }
+
+    .tk-card {
+      background: var(--bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--line);
+      padding: 1rem 1rem 1.5rem;
+    }
+    .tk-card .card-h {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 0.75rem;
+    }
+    .tk-calendar-wrap { min-height: 640px; }
+
+    /* Modals */
+    .tk-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .tk-modal-overlay.is-open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .tk-modal {
+      width: 100%;
+      max-width: 480px;
+      background: var(--bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      max-height: 90vh;
+      overflow: auto;
+    }
+    .tk-modal-h {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 1.25rem 0.5rem;
+    }
+    .tk-modal-t {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0;
+    }
+    .icon-btn {
+      display: inline-flex;
+      width: 2.2rem;
+      height: 2.2rem;
+      border: none;
+      background: var(--status-bg);
+      color: var(--ink);
+      border-radius: 8px;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-btn:hover { background: var(--line); }
+    .tk-modal-b { padding: 0 1.25rem 1rem; }
+    .tk-modal-f {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      padding: 0 1.25rem 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .modern-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin: 0.75rem 0 0.35rem;
+    }
+    .modern-input, .modern-input-wrap select {
+      width: 100%;
+      padding: 0.5rem 0.6rem;
+      font-size: 0.9rem;
+      color: var(--ink);
+      background: var(--bg);
+      border: 1px solid var(--status-border);
+      border-radius: 8px;
+    }
+    .modern-input:focus, .modern-input-wrap select:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px var(--brand-light);
+    }
+    .add-entry-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      margin-top: 0.5rem;
+      padding: 0.75rem;
+      border: 2px dashed var(--line);
+      border-radius: 12px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .add-entry-btn:hover { border-color: var(--brand); color: var(--brand); }
+
+    .tk-dl { margin: 0.35rem 0; font-size: 0.95rem; }
+    .tk-dl .lab { color: var(--muted); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+    .tk-dl .val { color: var(--ink); }
+
+    /* Toasts */
+    #toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 3000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      pointer-events: none;
+    }
+    .tk-toast {
+      min-width: 220px;
+      max-width: 90vw;
+      padding: 0.75rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: var(--ink);
+      transform: translateX(120%);
+      transition: transform 0.3s ease;
+    }
+    .tk-toast--in { transform: translateX(0); }
+    .tk-toast--ok { border-left: 4px solid var(--success); }
+    .tk-toast--err { border-left: 4px solid var(--danger); }
+
+    /* FullCalendar light tweaks (Farben & Typo) */
+    .fc { --fc-border-color: var(--line); --fc-today-bg-color: var(--brand-light); font-size: 0.88rem; }
+    .fc .fc-button-primary { background: var(--brand) !important; border-color: var(--brand) !important; }
+    .fc .fc-button-primary:hover { background: var(--brand-dark) !important; }
+    .fc .fc-button { border-radius: 8px; font-size: 0.85rem; }
+    .event-type-nrw { opacity: 0.95; font-size: 0.8em; }
+  </style>
+</head>
+<body>
+  <div class="tk-shell">
+    <header class="tk-header" role="banner">
+      <div class="tk-header-left">
+        <img
+          class="tk-logo"
+          src="https://roots-consultants.de/wp-content/uploads/2025/11/Design-ohne-Titel-24-1-e1763482494374.png"
+          width="28"
+          height="28"
+          alt="ROOTS"
+        />
+        <div class="tk-wordmark">
+          <div class="tk-title-row">
+            <span class="tk-title-roots">ROOTS</span> <span class="tk-title-kal">KALENDER</span>
+            <span class="tk-header-divider" style="display:inline-block; width:1px; height:1em; margin:0 0.3rem; vertical-align:middle; background: var(--line);"></span>
+            <span class="tk-subtitle" style="font-weight:600; color:var(--muted)">| Team-Abwesenheiten</span>
+          </div>
+          <div class="tk-subtitle" style="margin-top:0.15rem">Zentrale Abwesenheiten · Phase 1 (ohne Login)</div>
+        </div>
+      </div>
+      <div class="tk-header-actions">
+        <div class="tk-search">
+          <i class="ri-search-line" aria-hidden="true"></i>
+          <input type="search" id="header-search" placeholder="Nach Name suchen" autocomplete="off" />
+        </div>
+        <div id="sync-badge" class="is-offline" title="Realtime">
+          <i class="ri-cloud-line" aria-hidden="true"></i>
+          <span class="sync-label">Offline</span>
+        </div>
+        <button type="button" class="btn-save" id="btn-new-entry" title="Eintrag erstellen">
+          <i class="ri-add-line" aria-hidden="true"></i> Eintrag
+        </button>
+      </div>
+    </header>
+
+    <div class="tk-view-row">
+      <div class="section-label">Kalenderansicht</div>
+      <div class="tk-view-btns">
+        <button type="button" class="btn-revision" id="view-month" aria-pressed="true">Monat</button>
+        <button type="button" class="btn-revision" id="view-week" aria-pressed="false">Woche</button>
+        <button type="button" class="btn-revision" id="view-year" aria-pressed="false">Jahr</button>
+      </div>
+    </div>
+
+    <div class="tk-card">
+      <div class="tk-calendar-wrap" id="calendar" role="region" aria-label="Kalender"></div>
+    </div>
+  </div>
+
+  <div id="modal-create" class="tk-modal-overlay" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="tk-modal" id="m-box">
+      <div class="tk-modal-h">
+        <h2 class="tk-modal-t">Eintrag erstellen</h2>
+        <button type="button" class="icon-btn" id="m-close" title="Schließen"><i class="ri-close-line" aria-hidden="true"></i></button>
+      </div>
+      <div class="tk-modal-b">
+        <label class="modern-label" for="f-name">Name</label>
+        <input class="modern-input" id="f-name" type="text" required maxlength="120" />
+        <div class="modern-input-wrap">
+          <label class="modern-label" for="f-type">Ereignistyp</label>
+          <select id="f-type" class="modern-input" title="Ereignistyp">
+            <option value="urlaub">Urlaub</option>
+            <option value="krank">Krank / krankheitsbedingt</option>
+            <option value="homeoffice">Homeoffice</option>
+            <option value="dienstreise">Dienstreise</option>
+            <option value="sonstiges">Sonstiges</option>
+          </select>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem 1rem">
+          <div>
+            <label class="modern-label" for="f-start">Start</label>
+            <input class="modern-input" id="f-start" type="date" required />
+          </div>
+          <div>
+            <label class="modern-label" for="f-end">Ende</label>
+            <input class="modern-input" id="f-end" type="date" required />
+          </div>
+        </div>
+        <label class="modern-label" for="f-note">Notiz (optional)</label>
+        <input class="modern-input" id="f-note" type="text" maxlength="500" />
+      </div>
+      <div class="tk-modal-f">
+        <button type="button" class="btn-revision" id="m-cancel">Abbrechen</button>
+        <button type="button" class="btn-save" id="m-save">Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-detail" class="tk-modal-overlay" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="tk-modal">
+      <div class="tk-modal-h">
+        <h2 class="tk-modal-t">Eintrag</h2>
+        <button type="button" class="icon-btn" id="d-close-2" title="Schließen"><i class="ri-close-line" aria-hidden="true"></i></button>
+      </div>
+      <div class="tk-modal-b" id="d-body">
+        <div class="tk-dl"><span class="lab">Name</span><br /><span class="val" id="d-name">—</span></div>
+        <div class="tk-dl"><span class="lab">Ereignistyp</span><br /><span class="val" id="d-type">—</span></div>
+        <div class="tk-dl"><span class="lab">Zeitraum</span><br /><span class="val" id="d-range">—</span></div>
+        <div class="tk-dl"><span class="lab">Notiz</span><br /><span class="val" id="d-note">—</span></div>
+      </div>
+      <div class="tk-modal-f">
+        <button type="button" class="icon-btn" id="btn-delete-entry" style="color: var(--danger)" title="Löschen">
+          <i class="ri-delete-bin-line" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="btn-save" id="d-close">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
