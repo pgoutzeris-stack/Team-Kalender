@@ -6,13 +6,12 @@ import dayGridPlugin from "https://esm.sh/@fullcalendar/daygrid@6.1.10";
 import timeGridPlugin from "https://esm.sh/@fullcalendar/timegrid@6.1.10";
 import interactionPlugin from "https://esm.sh/@fullcalendar/interaction@6.1.10";
 import multiMonthPlugin from "https://esm.sh/@fullcalendar/multimonth@6.1.10";
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
+import { TEAM_KALENDER_API_URL } from "./config.js";
 import {
-  createSupabaseClient,
   fetchAllEvents,
   insertEvent,
   deleteEventById,
-  subscribeToEvents,
+  startEventPolling,
 } from "./supabase-events.js";
 import { getNrwFeiertageAsCalendarEvents } from "./nrw-feiertage.js";
 
@@ -203,17 +202,17 @@ async function init() {
   els.btnViewYear = document.getElementById("view-year");
   els.detailDelete = document.getElementById("btn-delete-entry");
 
-  if (!SUPABASE_URL || SUPABASE_URL.includes("xxxx") || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes("placeholder")) {
-    toast("config.js: SUPABASE_URL & SUPABASE_ANON_KEY setzen", "err");
+  if (!TEAM_KALENDER_API_URL || TEAM_KALENDER_API_URL.includes("<")) {
+    toast("config.js: TEAM_KALENDER_API_URL prüfen", "err");
   }
 
-  let unsub = () => void 0;
   try {
-    createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     dbRows = await fetchAllEvents();
+    els.badge.classList.remove("is-offline");
+    els.badge.querySelector(".sync-label").textContent = "Online (Sync)";
   } catch (e) {
     console.error(e);
-    toast("Supabase: " + (e.message || "Fehler beim Laden"), "err");
+    toast("API: " + (e.message || "Fehler beim Laden"), "err");
   }
 
   const nrwEvents = getNrwFeiertageAsCalendarEvents().map((e) => ({
@@ -302,29 +301,22 @@ async function init() {
   rebuildDbEvents();
   syncViewButtons();
 
-  unsub = subscribeToEvents({
-    onInsert: async () => {
-      try {
-        dbRows = await fetchAllEvents();
+  startEventPolling(
+    {
+      onData: (rows) => {
+        dbRows = rows;
         rebuildDbEvents();
-      } catch (e) {
-        console.error(e);
-      }
+      },
+      onStatus: (st) => {
+        const online = st === "ok";
+        els.badge.classList.toggle("is-offline", !online);
+        els.badge.querySelector(".sync-label").textContent = online
+          ? "Online (Sync)"
+          : "Offline";
+      },
     },
-    onDelete: async () => {
-      try {
-        dbRows = await fetchAllEvents();
-        rebuildDbEvents();
-      } catch (e) {
-        console.error(e);
-      }
-    },
-    onStatus: (st) => {
-      const online = st === "SUBSCRIBED";
-      els.badge.classList.toggle("is-offline", !online);
-      els.badge.querySelector(".sync-label").textContent = online ? "Online" : "Offline";
-    },
-  });
+    4000
+  );
 
   els.btnViewMonth.addEventListener("click", () => {
     calendar.changeView("dayGridMonth");
