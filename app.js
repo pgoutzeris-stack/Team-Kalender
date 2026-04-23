@@ -355,7 +355,8 @@ async function init() {
     const [ev, mem] = await Promise.all([fetchAllEvents(), fetchMembers()]);
     dbRows = ev;
     memberRows = sortMembersList(mem);
-    els.badge.classList.remove("is-offline");
+    els.badge.classList.remove("offline", "online");
+    els.badge.classList.add("online");
     els.badge.querySelector(".sync-label").textContent = "Online (Sync)";
   } catch (e) {
     console.error(e);
@@ -482,7 +483,8 @@ async function init() {
       },
       onStatus: (st) => {
         const online = st === "ok";
-        els.badge.classList.toggle("is-offline", !online);
+        els.badge.classList.remove("offline", "online");
+        els.badge.classList.add(online ? "online" : "offline");
         els.badge.querySelector(".sync-label").textContent = online
           ? "Online (Sync)"
           : "Offline";
