@@ -1,11 +1,6 @@
 /**
  * ROOTS Team-Abwesenheitskalender – UI, FullCalendar, Modals, Toasts
  */
-import { Calendar } from "https://esm.sh/@fullcalendar/core@6.1.10";
-import dayGridPlugin from "https://esm.sh/@fullcalendar/daygrid@6.1.10";
-import timeGridPlugin from "https://esm.sh/@fullcalendar/timegrid@6.1.10";
-import interactionPlugin from "https://esm.sh/@fullcalendar/interaction@6.1.10";
-import multiMonthPlugin from "https://esm.sh/@fullcalendar/multimonth@6.1.10";
 import { TEAM_KALENDER_API_URL } from "./config.js";
 import {
   fetchAllEvents,
@@ -231,10 +226,26 @@ async function init() {
     applySearch();
   }
 
+  const FC = globalThis.FullCalendar;
+  if (!FC || typeof FC.Calendar !== "function") {
+    toast("FullCalendar fehlt: index.html muss fullcalendar index.global.min.js VOR app.js laden.", "err");
+    return;
+  }
+
+  let plugins = Array.isArray(FC.globalPlugins) ? FC.globalPlugins : [];
+  if (plugins.length === 0 && FC.dayGridPlugin) {
+    plugins = [
+      FC.dayGridPlugin,
+      FC.timeGridPlugin,
+      FC.interactionPlugin,
+      FC.multiMonthPlugin,
+    ].filter(Boolean);
+  }
+
   let syncViewButtons = () => void 0;
 
-  calendar = new Calendar(els.cal, {
-    plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin, multiMonthPlugin],
+  calendar = new FC.Calendar(els.cal, {
+    ...(plugins.length ? { plugins } : {}),
     locale: "de",
     timeZone: "local",
     initialView: "dayGridMonth",
