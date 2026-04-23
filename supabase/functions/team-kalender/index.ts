@@ -1,24 +1,55 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.0";
 
-const ALLOWED = new Set<string>([
+/**
+ * Feste erlaubte Origins (GitHub Pages = nur Host, ohne Pfad – der Browser sendet
+ * z. B. https://user.github.io auch für /Repo/unterseiten).
+ *
+ * Weitere Origins: Supabase → Project → Edge Functions → Secrets
+ *   TEAM_KALENDER_CORS_ORIGINS = https://andere-domain.de,https://preview.example.com
+ * Kein Slash am Ende, kein Pfad. Danach: supabase functions deploy team-kalender
+ */
+const DEFAULT_CORS: string[] = [
   "https://pgoutzeris-stack.github.io",
+  "http://127.0.0.1:3000",
+  "http://localhost:3000",
   "http://127.0.0.1:5500",
   "http://localhost:5500",
   "http://127.0.0.1:8080",
   "http://localhost:8080",
-]);
+];
 
-function cors(req: Request) {
+function extraOriginsFromEnv(): string[] {
+  const raw = Deno.env.get("TEAM_KALENDER_CORS_ORIGINS");
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((s) => s.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+}
+
+function buildAllowedSet(): Set<string> {
+  return new Set([...DEFAULT_CORS, ...extraOriginsFromEnv()]);
+}
+
+function defaultFallbackOrigin() {
+  return "https://pgoutzeris-stack.github.io";
+}
+
+function corsHeaders(req: Request) {
+  const allowed = buildAllowedSet();
   const o = req.headers.get("origin");
-  const allow =
-    (o && ALLOWED.has(o) ? o : "https://pgoutzeris-stack.github.io") as string;
-  return {
-    "Access-Control-Allow-Origin": allow,
+  const h: Record<string, string> = {
     "Access-Control-Allow-Headers":
       "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
   };
+  if (o && allowed.has(o)) {
+    h["Access-Control-Allow-Origin"] = o;
+  } else if (!o) {
+    h["Access-Control-Allow-Origin"] = defaultFallbackOrigin();
+  }
+  return h;
 }
 
 function serviceClient() {
@@ -33,7 +64,7 @@ function serviceClient() {
 }
 
 Deno.serve(async (req) => {
-  const c = cors(req);
+  const c = corsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: c });
   }
