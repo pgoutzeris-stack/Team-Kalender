@@ -167,13 +167,7 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...c, "Content-Type": "application/json" } },
         );
       }
-      const allowed = [
-        "urlaub",
-        "krank",
-        "homeoffice",
-        "dienstreise",
-        "sonstiges",
-      ];
+      const allowed = ["urlaub", "krank", "dienstreise", "sonstiges"];
       if (!allowed.includes(type)) {
         return new Response(JSON.stringify({ error: "Ungültiger Ereignistyp" }), {
           status: 400,

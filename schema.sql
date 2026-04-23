@@ -9,9 +9,7 @@ create table if not exists public.events (
   end_date date not null,
   note text,
   created_at timestamptz default now() not null,
-  constraint events_type_check check (
-    type in ('urlaub', 'krank', 'homeoffice', 'dienstreise', 'sonstiges')
-  )
+  constraint events_type_check check (type in ('urlaub', 'krank', 'dienstreise', 'sonstiges'))
 );
 
 -- Phase 1: RLS bewusst aus (nur intern nutzen, anon key nicht öffentlich teilen)

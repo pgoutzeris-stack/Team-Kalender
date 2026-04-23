@@ -16,7 +16,6 @@ import { getNrwFeiertageAsCalendarEvents } from "./nrw-feiertage.js";
 const TYPE_LABELS = {
   urlaub: "Urlaub",
   krank: "Krank / krankheitsbedingt",
-  homeoffice: "Homeoffice",
   dienstreise: "Dienstreise",
   sonstiges: "Sonstiges",
 };
@@ -24,7 +23,6 @@ const TYPE_LABELS = {
 const TYPE_COLORS = {
   urlaub: { bg: "#206efb", fg: "#ffffff" },
   krank: { bg: "#dc2626", fg: "#ffffff" },
-  homeoffice: { bg: "#10b981", fg: "#ffffff" },
   dienstreise: { bg: "#f59e0b", fg: "#0f172a" },
   sonstiges: { bg: "#475569", fg: "#ffffff" },
   nrw: { bg: "#e2e8f0", fg: "#0f172a" },
@@ -78,7 +76,6 @@ const els = {
   formEnd: null,
   formNote: null,
   datePresets: null,
-  formToday14: null,
   dName: null,
   dType: null,
   dRange: null,
@@ -143,7 +140,7 @@ function inclusiveEndToFcEndYmd(ymd) {
 }
 
 function rowToFcEvent(row) {
-  const t = row.type;
+  const t = row.type === "homeoffice" ? "sonstiges" : row.type;
   const col = TYPE_COLORS[t] || TYPE_COLORS.sonstiges;
   const n = row.member_name || "—";
   return {
@@ -366,7 +363,6 @@ async function init() {
   els.formEnd = document.getElementById("f-end");
   els.formNote = document.getElementById("f-note");
   els.datePresets = document.getElementById("f-date-presets");
-  els.formToday14 = document.getElementById("f-today-14");
   els.dName = document.getElementById("d-name");
   els.dType = document.getElementById("d-type");
   els.dRange = document.getElementById("d-range");
@@ -402,14 +398,6 @@ async function init() {
       }
       const d = parseInt(b.getAttribute("data-inclusivedays") || "1", 10);
       setEndFromInclusiveDuration(els.formStart.value, d);
-    });
-  }
-  if (els.formToday14) {
-    els.formToday14.addEventListener("click", () => {
-      if (!els.formStart || !els.formEnd) return;
-      const todayYmd = toYmd(new Date());
-      els.formStart.value = todayYmd;
-      setEndFromInclusiveDuration(todayYmd, 14);
     });
   }
   if (els.formStart) {
@@ -482,10 +470,12 @@ async function init() {
     unselectAuto: true,
     dayMaxEvents: 4,
     weekNumbers: false,
-    multiMonthMaxColumns: 2,
     views: {
       dayGridWeek: { dayMaxEvents: 5 },
-      multiMonthYear: { multiMonthMinWidth: 300 },
+      multiMonthYear: {
+        multiMonthMaxColumns: 3,
+        multiMonthMinWidth: 200,
+      },
     },
     buttonText: {
       today: "Heute",
