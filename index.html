@@ -483,67 +483,58 @@
     }
     .tk-type-chips { margin-top: 0.35rem; }
     .tk-type-chips .tk-chip { text-align: center; }
-    .tk-date-field {
-      position: relative;
+    /* Tag / Monat / Jahr – gleiches Erscheinungsbild in Safari & Chrome (kein type=date) */
+    .tk-date-combo { width: 100%; }
+    .tk-date-combo__row {
       display: flex;
-      align-items: center;
+      flex-wrap: wrap;
+      align-items: stretch;
+      gap: 0.4rem 0.45rem;
       min-height: 2.6rem;
       width: 100%;
       border: 1px solid var(--status-border);
       border-radius: 10px;
       background: var(--bg);
-      padding: 0 0.2rem 0 0.65rem;
+      padding: 0.4rem 0.45rem 0.4rem 0.5rem;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .tk-date-field:focus-within {
+    .tk-date-combo__row:focus-within {
       border-color: var(--brand);
       box-shadow: 0 0 0 3px var(--brand-light);
     }
-    .tk-date-input-native {
-      flex: 1 1 auto;
+    .tk-date-select {
+      flex: 1 1 0;
       min-width: 0;
-      min-height: 2.35rem;
-      padding: 0.35rem 2.1rem 0.35rem 0.1rem;
-      border: none !important;
-      background: transparent !important;
-      box-shadow: none !important;
-      font-size: 0.95rem;
+      max-width: 100%;
+      min-height: 2.1rem;
+      margin: 0;
+      padding: 0.35rem 1.6rem 0.35rem 0.4rem;
+      font-size: 0.9rem;
       font-weight: 600;
-      color: var(--ink);
       font-family: var(--font-ui) !important;
-      outline: none;
+      color: var(--ink);
+      line-height: 1.2;
+      background: var(--status-bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
       color-scheme: light;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23475569' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.2rem center;
     }
     @media (prefers-color-scheme: dark) {
-      .tk-date-input-native { color-scheme: dark; }
+      .tk-date-select { color-scheme: dark; }
     }
-    .tk-date-input-native::-webkit-calendar-picker-indicator {
-      position: absolute;
-      right: 0.25rem;
-      top: 50%;
-      width: 2.4rem;
-      height: 2.1rem;
-      margin: 0;
-      padding: 0;
-      transform: translateY(-50%);
-      cursor: pointer;
-      opacity: 0;
-      z-index: 1;
+    .tk-date-select:focus {
+      outline: none;
+      border-color: var(--brand);
     }
-    .tk-date-icon {
-      position: absolute;
-      right: 0.55rem;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 1.15rem;
-      color: var(--muted);
-      pointer-events: none;
-      z-index: 0;
-    }
-    .tk-date-field:focus-within .tk-date-icon { color: var(--brand); }
-    .tk-date-field .tk-date-input-native {
-      position: relative;
-    }
+    .tk-date-combo__row .tk-date-select:nth-child(1) { flex: 0 0 3.1rem; min-width: 3.1rem; }
+    .tk-date-combo__row .tk-date-select:nth-child(2) { flex: 1.1 1 5rem; min-width: 4.2rem; }
+    .tk-date-combo__row .tk-date-select:nth-child(3) { flex: 0.9 1 4.2rem; min-width: 4.2rem; }
     .field-sub { font-size: 0.88rem; color: var(--muted); margin: 0 0 0.75rem; line-height: 1.5; }
     .tk-modal-b .tk-new-member .modern-label { margin-top: 0; }
     .modern-input, .modern-input-wrap select {
@@ -728,15 +719,16 @@
     .fc .fc-dayGridWeek-view .fc-col-header-cell { padding: 0.5rem 0.35rem; }
     .fc .fc-dayGridWeek-view .fc-daygrid-day-events { min-height: 1.2rem; }
 
-    /* Jahres-Mehrmonatsansicht: Monate nebeneinander (Grid erzwingt Spalten) */
+    /* Jahresansicht: nebeneinander + pro Monat Karte, Raster wie Monatsansicht */
+    .fc .fc-multiMonthYear-view { --fc-today-bg-color: var(--brand-light); }
     .fc .fc-multimonth {
       display: grid !important;
       grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
       grid-auto-rows: min-content;
-      gap: 1rem 1.25rem !important;
+      gap: 1.4rem 1.35rem !important;
       width: 100% !important;
       align-items: start;
-      padding: 0.25rem 0 0.5rem;
+      padding: 0.4rem 0.15rem 0.75rem;
     }
     @media (max-width: 1100px) {
       .fc .fc-multimonth { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
@@ -749,17 +741,45 @@
     .fc .fc-multimonth > * {
       min-width: 0;
       max-width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
     }
-    .fc .fc-multimonth-title {
-      font-size: 0.9rem;
+    .fc .fc-multimonth .fc-multimonth-title {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 1rem;
       font-weight: 700;
-      padding: 0.45rem 0.35rem 0.5rem;
+      margin: 0;
+      padding: 0.7rem 0.85rem 0.6rem;
       color: var(--ink);
       background: var(--status-bg);
-      border-radius: 8px 8px 0 0;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      text-transform: capitalize;
     }
-    .fc .fc-multimonth .fc-daygrid { border-top: none; }
-    .fc .fc-multimonth .fc-theme-standard th { background: var(--app-bg); }
+    .fc .fc-multimonth .fc-daygrid { border: none; background: var(--bg); }
+    .fc .fc-multimonth .fc-scrollgrid { border: none !important; }
+    .fc .fc-multimonth .fc-daygrid-day-frame { min-height: 3.1rem; }
+    .fc .fc-multimonth .fc-daygrid-day-top { padding: 0.2rem 0.35rem; }
+    .fc .fc-multimonth .fc-daygrid-day-number {
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .fc .fc-multimonth .fc-day-today .fc-daygrid-day-number { color: var(--brand); }
+    .fc .fc-multimonth .fc-col-header-cell,
+    .fc .fc-multimonth th.fc-col-header-cell {
+      background: var(--status-bg) !important;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 600;
+    }
+    .fc .fc-multimonth .fc-h-event { font-size: 0.8rem; }
     @media (min-width: 1200px) {
       .fc .fc-dayGridWeek-view .fc-daygrid-day-frame { min-height: 9.5rem; }
     }
@@ -884,17 +904,25 @@
           <div id="f-dates-lbl" class="modern-label" style="margin-top:1rem; margin-bottom:0.35rem">Zeitraum</div>
           <div class="form-grid-2">
             <div>
-              <label class="modern-label" for="f-start">Start</label>
-              <div class="tk-date-field">
-                <input class="tk-date-input-native" id="f-start" type="date" required />
-                <i class="ri-calendar-line tk-date-icon" aria-hidden="true"></i>
+              <label class="modern-label" for="f-start-d">Start</label>
+              <div class="tk-date-combo">
+                <input type="hidden" id="f-start" name="f-start" value="" />
+                <div class="tk-date-combo__row" role="group" aria-label="Startdatum">
+                  <select id="f-start-d" class="tk-date-select" required></select>
+                  <select id="f-start-m" class="tk-date-select" required></select>
+                  <select id="f-start-y" class="tk-date-select" required></select>
+                </div>
               </div>
             </div>
             <div>
-              <label class="modern-label" for="f-end">Ende</label>
-              <div class="tk-date-field">
-                <input class="tk-date-input-native" id="f-end" type="date" required />
-                <i class="ri-calendar-line tk-date-icon" aria-hidden="true"></i>
+              <label class="modern-label" for="f-end-d">Ende</label>
+              <div class="tk-date-combo">
+                <input type="hidden" id="f-end" name="f-end" value="" />
+                <div class="tk-date-combo__row" role="group" aria-label="Enddatum">
+                  <select id="f-end-d" class="tk-date-select" required></select>
+                  <select id="f-end-m" class="tk-date-select" required></select>
+                  <select id="f-end-y" class="tk-date-select" required></select>
+                </div>
               </div>
             </div>
           </div>

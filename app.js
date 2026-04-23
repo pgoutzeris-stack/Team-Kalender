@@ -115,6 +115,118 @@ function toYmd(d) {
   return `${y}-${m}-${day}`;
 }
 
+const MONTHS_DE = [
+  "Jan",
+  "Feb",
+  "Mär",
+  "Apr",
+  "Mai",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Okt",
+  "Nov",
+  "Dez",
+];
+
+function daysInMonth(y, m) {
+  return new Date(y, m, 0).getDate();
+}
+
+function ymdFromParts(y, m, d) {
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+/**
+ * Füllt Tage-Select (1…letzter Tag) und setzt Tag auf gültigen Wert.
+ * @param {HTMLSelectElement} dSel
+ * @param {number} y
+ * @param {number} m 1–12
+ * @param {number} [prefer] zuletzt gewählter Tag
+ */
+function fillDayOptions(dSel, y, m, prefer) {
+  if (!dSel) return 1;
+  const maxD = daysInMonth(y, m);
+  const want = prefer != null && prefer > 0 ? prefer : 1;
+  const use = want > maxD ? maxD : want;
+  dSel.innerHTML = "";
+  for (let i = 1; i <= maxD; i++) {
+    const o = document.createElement("option");
+    o.value = String(i);
+    o.textContent = String(i);
+    dSel.appendChild(o);
+  }
+  dSel.value = String(use);
+  return use;
+}
+
+function buildYearOptions(ySel, centerY) {
+  if (!ySel) return;
+  const from = (centerY || new Date().getFullYear()) - 2;
+  const to = from + 7;
+  ySel.innerHTML = "";
+  for (let y = from; y <= to; y++) {
+    const o = document.createElement("option");
+    o.value = String(y);
+    o.textContent = String(y);
+    ySel.appendChild(o);
+  }
+}
+
+function buildMonthOptions(mSel) {
+  if (!mSel) return;
+  mSel.innerHTML = "";
+  for (let m = 1; m <= 12; m++) {
+    const o = document.createElement("option");
+    o.value = String(m);
+    o.textContent = `${MONTHS_DE[m - 1]}`;
+    mSel.appendChild(o);
+  }
+}
+
+/** @param {"f-start" | "f-end"} idBase */
+function readYmdFromCombos(idBase) {
+  const dEl = document.getElementById(`${idBase}-d`);
+  const mEl = document.getElementById(`${idBase}-m`);
+  const yEl = document.getElementById(`${idBase}-y`);
+  if (!dEl || !mEl || !yEl) return "";
+  const y = parseInt(yEl.value, 10);
+  const m = parseInt(mEl.value, 10);
+  const d = parseInt(dEl.value, 10);
+  if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) return "";
+  return ymdFromParts(y, m, d);
+}
+
+/** @param {"f-start" | "f-end"} idBase @param {string} ymd */
+function setCombosFromYmd(idBase, ymd) {
+  if (!ymd || ymd.length < 10) return;
+  const dEl = document.getElementById(`${idBase}-d`);
+  const mEl = document.getElementById(`${idBase}-m`);
+  const yEl = document.getElementById(`${idBase}-y`);
+  const hEl = document.getElementById(idBase);
+  if (!dEl || !mEl || !yEl) return;
+  const y = parseInt(ymd.slice(0, 4), 10);
+  const m = parseInt(ymd.slice(5, 7), 10);
+  const d = parseInt(ymd.slice(8, 10), 10);
+  if (yEl.querySelector(`option[value="${y}"]`) == null) {
+    const o = document.createElement("option");
+    o.value = String(y);
+    o.textContent = String(y);
+    yEl.appendChild(o);
+  }
+  yEl.value = String(y);
+  mEl.value = String(m);
+  fillDayOptions(dEl, y, m, d);
+  const out = ymdFromParts(
+    y,
+    m,
+    parseInt(dEl.value, 10),
+  );
+  if (hEl) hEl.value = out;
+}
+
+
 /** @param {string} ymd Lokal YYYY-MM-DD, @param {number} n Tage dazu */
 function ymdAddDays(ymd, n) {
   const d = new Date(ymd + "T12:00:00");
@@ -130,7 +242,9 @@ function ymdAddDays(ymd, n) {
 function setEndFromInclusiveDuration(ymd, inclusiveDays) {
   if (!ymd || !els.formEnd) return;
   const days = Math.max(1, Math.floor(inclusiveDays));
-  els.formEnd.value = ymdAddDays(ymd, days - 1);
+  const endY = ymdAddDays(ymd, days - 1);
+  els.formEnd.value = endY;
+  setCombosFromYmd("f-end", endY);
 }
 
 function inclusiveEndToFcEndYmd(ymd) {
@@ -312,6 +426,8 @@ function openCreateModal(preset) {
     }
   }
   if (els.formEnd.value < els.formStart.value) els.formEnd.value = els.formStart.value;
+  if (els.formStart && els.formStart.value) setCombosFromYmd("f-start", els.formStart.value);
+  if (els.formEnd && els.formEnd.value) setCombosFromYmd("f-end", els.formEnd.value);
   els.modalOvl.classList.add("is-open");
   els.modalOvl.setAttribute("aria-hidden", "false");
   els.formMemberTrigger.focus();
@@ -392,21 +508,63 @@ async function init() {
     els.datePresets.addEventListener("click", (e) => {
       const b = e.target && e.target.closest("button[data-inclusivedays]");
       if (!b) return;
-      if (!els.formStart || !els.formStart.value) {
+      const s = readYmdFromCombos("f-start") || (els.formStart && els.formStart.value) || "";
+      if (!s) {
         toast("Zuerst ein Startdatum wählen", "err");
         return;
       }
       const d = parseInt(b.getAttribute("data-inclusivedays") || "1", 10);
-      setEndFromInclusiveDuration(els.formStart.value, d);
+      setEndFromInclusiveDuration(s, d);
     });
   }
-  if (els.formStart) {
-    els.formStart.addEventListener("change", () => {
-      if (els.formEnd && els.formStart.value && els.formEnd.value < els.formStart.value) {
+  (function initDateCombos() {
+    const yNow = new Date().getFullYear();
+    const startY = document.getElementById("f-start-y");
+    const endY = document.getElementById("f-end-y");
+    buildYearOptions(startY, yNow);
+    buildYearOptions(endY, yNow);
+    buildMonthOptions(document.getElementById("f-start-m"));
+    buildMonthOptions(document.getElementById("f-end-m"));
+    const todayYmd = toYmd(new Date());
+    if (els.formStart) {
+      if (!els.formStart.value) els.formStart.value = todayYmd;
+      setCombosFromYmd("f-start", els.formStart.value);
+    }
+    if (els.formEnd) {
+      if (!els.formEnd.value) els.formEnd.value = todayYmd;
+      setCombosFromYmd("f-end", els.formEnd.value);
+    }
+    function handleDatePartChange(idBase) {
+      const mEl = document.getElementById(`${idBase}-m`);
+      const yEl = document.getElementById(`${idBase}-y`);
+      const dEl = document.getElementById(`${idBase}-d`);
+      if (!mEl || !yEl || !dEl) return;
+      const y = parseInt(yEl.value, 10);
+      const m = parseInt(mEl.value, 10);
+      const prev = parseInt(dEl.value, 10);
+      fillDayOptions(dEl, y, m, prev);
+      const h = document.getElementById(idBase);
+      if (h) h.value = readYmdFromCombos(idBase) || h.value;
+      if (
+        idBase === "f-start" &&
+        els.formStart &&
+        els.formEnd &&
+        els.formStart.value > els.formEnd.value
+      ) {
         els.formEnd.value = els.formStart.value;
+        setCombosFromYmd("f-end", els.formEnd.value);
       }
+    }
+    ["f-start", "f-end"].forEach((idBase) => {
+      ["d", "m", "y"].forEach((p) => {
+        const el = document.getElementById(`${idBase}-${p}`);
+        if (!el) return;
+        el.addEventListener("change", () => {
+          handleDatePartChange(idBase);
+        });
+      });
     });
-  }
+  })();
 
   if (!TEAM_KALENDER_API_URL || TEAM_KALENDER_API_URL.includes("<")) {
     toast("config.js: TEAM_KALENDER_API_URL prüfen", "err");
