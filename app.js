@@ -147,6 +147,7 @@ function rowToFcEvent(row) {
 }
 
 function applySearch() {
+  if (!calendar) return;
   const q = (els.search.value || "").trim().toLowerCase();
   searchQuery = q;
   calendar.getEvents().forEach((e) => {
@@ -459,7 +460,12 @@ async function init() {
     else if (t === "multiMonthYear") els.btnViewYear.setAttribute("aria-pressed", "true");
   };
 
-  calendar.render();
+  try {
+    calendar.render();
+  } catch (err) {
+    console.error(err);
+    toast("Kalender-Darstellung fehlgeschlagen. Eintrag-Button trotzdem nutzbar.", "err");
+  }
   renderTeamList();
   rebuildDbEvents();
   buildMemberOptions();
@@ -486,13 +492,13 @@ async function init() {
   );
 
   els.btnViewMonth.addEventListener("click", () => {
-    calendar.changeView("dayGridMonth");
+    if (calendar) calendar.changeView("dayGridMonth");
   });
   els.btnViewWeek.addEventListener("click", () => {
-    calendar.changeView("timeGridWeek");
+    if (calendar) calendar.changeView("timeGridWeek");
   });
   els.btnViewYear.addEventListener("click", () => {
-    calendar.changeView("multiMonthYear");
+    if (calendar) calendar.changeView("multiMonthYear");
   });
 
   els.btnCreate.addEventListener("click", () => {
@@ -668,6 +674,7 @@ async function init() {
       closeModal(els.modalOvl2);
       toast("Eintrag gelöscht", "ok");
       dbRows = dbRows.filter((r) => r.id !== detailEventId);
+      if (!calendar) return;
       const ev = calendar.getEventById("db-" + detailEventId);
       if (ev) ev.remove();
     } catch (err) {
