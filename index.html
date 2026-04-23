@@ -357,12 +357,156 @@
     .tk-toast--ok { border-left: 4px solid var(--success); }
     .tk-toast--err { border-left: 4px solid var(--danger); }
 
-    /* FullCalendar light tweaks (Farben & Typo) */
-    .fc { --fc-border-color: var(--line); --fc-today-bg-color: var(--brand-light); font-size: 0.88rem; }
+    /* Custom Select (kein nativer Browser-Look) */
+    .tk-select { position: relative; z-index: 1; }
+    .tk-select.is-menu-open { z-index: 2200; }
+    .tk-select-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 2.5rem;
+      padding: 0.45rem 0.7rem 0.45rem 0.9rem;
+      text-align: left;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--ink);
+      background: var(--bg);
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .tk-select.is-menu-open .tk-select-trigger {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px var(--brand-light);
+    }
+    .tk-select-trigger i { color: var(--muted); font-size: 1.2rem; flex-shrink: 0; }
+    .tk-select-menu {
+      list-style: none;
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 6px);
+      margin: 0;
+      padding: 0.4rem 0;
+      max-height: 280px;
+      overflow-y: auto;
+      background: var(--bg);
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.15);
+      z-index: 10;
+    }
+    .tk-select-option {
+      padding: 0.5rem 0.9rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: var(--ink);
+    }
+    .tk-select-option:hover, .tk-select-option:focus-within { background: var(--brand-light); }
+    .tk-select-option[aria-selected="true"] { font-weight: 700; color: var(--brand); }
+    .tk-select-option--new { color: var(--brand); font-weight: 600; border-top: 1px solid var(--line); margin-top: 0.2rem; padding-top: 0.6rem; }
+    .tk-new-member {
+      margin-top: 0.6rem;
+      padding: 0.75rem;
+      border-radius: 12px;
+      background: var(--status-bg);
+      border: 1px dashed var(--line);
+    }
+    .tk-new-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+    .tk-new-row .modern-input { flex: 1; min-width: 140px; }
+    .btn-inline {
+      padding: 0.45rem 0.8rem;
+      background: var(--brand);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .btn-inline:hover { background: var(--brand-dark); }
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.5rem 0.85rem;
+      background: var(--status-bg);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .btn-ghost:hover { border-color: var(--brand); color: var(--brand); }
+    .tk-team-list { list-style: none; margin: 0; padding: 0; }
+    .tk-team-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .tk-team-name { font-weight: 600; }
+    .btn-icon-danger {
+      border: none;
+      background: transparent;
+      color: var(--danger);
+      cursor: pointer;
+      padding: 0.4rem;
+      border-radius: 8px;
+    }
+    .btn-icon-danger:hover { background: rgba(220, 38, 38, 0.1); }
+    .modern-input-wrap--select .modern-input {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23475569' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.5rem center;
+      padding-right: 2rem;
+      border-radius: 12px;
+    }
+
+    /* FullCalendar: ROOTS – moderne Oberfläche */
+    .fc { --fc-border-color: var(--line); --fc-today-bg-color: var(--brand-light); --fc-button-bg: var(--brand);
+      --fc-button-border-color: var(--brand); --fc-button-text-color: #fff; --fc-button-active-bg: var(--brand-dark);
+      font-size: 0.88rem; }
+    .fc .fc-scroller-harness { border-radius: 12px; }
+    .fc .fc-daygrid-day-frame { min-height: 3.1rem; }
+    .fc .fc-daygrid-day-top { padding: 0.2rem 0.35rem; }
+    .fc .fc-daygrid-day-number { font-weight: 600; font-size: 0.8rem; color: var(--muted); }
+    .fc .fc-day-today .fc-daygrid-day-number { color: var(--brand); }
+    .fc .fc-col-header-cell { background: var(--status-bg); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .fc .fc-timegrid-slots { min-height: 1.2em; }
+    .fc .fc-h-event, .fc .fc-v-event { border: none; border-radius: 8px; padding: 2px 6px; font-weight: 600; font-size: 0.8rem; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15); }
+    .fc .fc-h-event { margin-top: 2px; }
+    .fc .fc-daygrid-day-events { margin-bottom: 0.1rem; }
+    .fc .fc-daygrid-day-bottom { display: flex; flex-wrap: wrap; gap: 0.1rem; }
+    .fc .fc-daygrid-day-bottom .fc-h-event { margin: 0; }
+    .fc .fc-daygrid-day-bg .fc-day-top { z-index: 0; }
+    .fc .fc-daygrid-day-bg .fc-day-bottom { z-index: 0; }
+    .fc .fc-daygrid-day-bg .fc-h-event, .fc .fc-h-event, .fc .fc-h-event { box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06); }
+    .fc .fc-v-event { border: none; }
+    .fc .fc-timegrid { border-radius: 12px; overflow: hidden; }
+    .fc .fc-timegrid .fc-h-event, .fc .fc-timegrid .fc-v-event { font-size: 0.8rem; }
+    .fc .fc-timegrid-now-indicator-line { border-color: var(--brand); }
+    .fc .fc-timegrid-now-indicator-arrow { border-color: var(--brand); }
+
     .fc .fc-button-primary { background: var(--brand) !important; border-color: var(--brand) !important; }
     .fc .fc-button-primary:hover { background: var(--brand-dark) !important; }
-    .fc .fc-button { border-radius: 8px; font-size: 0.85rem; }
+    .fc .fc-button { border-radius: 10px; font-size: 0.84rem; font-weight: 600; }
+    .fc .fc-today-button { color: var(--ink) !important; background: var(--status-bg) !important; border-color: var(--line) !important; }
+    .fc .fc-today-button:hover { background: var(--line) !important; }
     .event-type-nrw { opacity: 0.95; font-size: 0.8em; }
+    @media (prefers-color-scheme: dark) {
+      .tk-select-trigger, .tk-select-menu { box-shadow: 0 1px 0 rgba(0,0,0,0.2); }
+    }
   </style>
 </head>
 <body>
@@ -390,10 +534,13 @@
           <i class="ri-search-line" aria-hidden="true"></i>
           <input type="search" id="header-search" placeholder="Nach Name suchen" autocomplete="off" />
         </div>
-        <div id="sync-badge" class="is-offline" title="Realtime">
+        <div id="sync-badge" class="is-offline" title="Abgleich per HTTP">
           <i class="ri-cloud-line" aria-hidden="true"></i>
           <span class="sync-label">Offline</span>
         </div>
+        <button type="button" class="btn-ghost" id="btn-team" title="Team verwalten">
+          <i class="ri-group-line" aria-hidden="true"></i> Team
+        </button>
         <button type="button" class="btn-save" id="btn-new-entry" title="Eintrag erstellen">
           <i class="ri-add-line" aria-hidden="true"></i> Eintrag
         </button>
@@ -421,9 +568,22 @@
         <button type="button" class="icon-btn" id="m-close" title="Schließen"><i class="ri-close-line" aria-hidden="true"></i></button>
       </div>
       <div class="tk-modal-b">
-        <label class="modern-label" for="f-name">Name</label>
-        <input class="modern-input" id="f-name" type="text" required maxlength="120" />
-        <div class="modern-input-wrap">
+        <span class="modern-label">Teammitglied</span>
+        <div class="tk-select" id="member-select">
+          <button type="button" class="tk-select-trigger" id="f-member-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Teammitglied wählen">
+            <span id="f-member-text">Teammitglied wählen</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <ul class="tk-select-menu" id="f-member-menu" role="listbox" hidden></ul>
+          <div id="f-new-member-wrap" class="tk-new-member" hidden>
+            <div class="modern-label" style="margin-top:0">Neuer Name</div>
+            <div class="tk-new-row">
+              <input class="modern-input" id="f-new-member-name" type="text" autocomplete="name" placeholder="Vor- und Nachname" maxlength="120" />
+              <button type="button" class="btn-inline" id="f-new-member-add">Anlegen &amp; wählen</button>
+            </div>
+          </div>
+        </div>
+        <div class="modern-input-wrap modern-input-wrap--select">
           <label class="modern-label" for="f-type">Ereignistyp</label>
           <select id="f-type" class="modern-input" title="Ereignistyp">
             <option value="urlaub">Urlaub</option>
@@ -449,6 +609,22 @@
       <div class="tk-modal-f">
         <button type="button" class="btn-revision" id="m-cancel">Abbrechen</button>
         <button type="button" class="btn-save" id="m-save">Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-team" class="tk-modal-overlay" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="tk-modal">
+      <div class="tk-modal-h">
+        <h2 class="tk-modal-t">Team</h2>
+        <button type="button" class="icon-btn" id="team-close-2" title="Schließen"><i class="ri-close-line" aria-hidden="true"></i></button>
+      </div>
+      <div class="tk-modal-b">
+        <p style="font-size:0.88rem; color:var(--muted); margin:0 0 0.75rem">Gespeicherte Teammitglieder. Löschen nur möglich, wenn keine Kalendereinträge mehr dazu existieren.</p>
+        <ul class="tk-team-list" id="team-list" aria-label="Teammitglieder"></ul>
+      </div>
+      <div class="tk-modal-f">
+        <button type="button" class="btn-save" id="team-close">Schließen</button>
       </div>
     </div>
   </div>

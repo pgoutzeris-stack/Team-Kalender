@@ -1,11 +1,14 @@
 /**
- * ROOTS Team-Abwesenheitskalender – UI, FullCalendar, Modals, Toasts
+ * ROOTS Team-Abwesenheitskalender – UI, FullCalendar, Modals, Custom-Select, Team-API
  */
 import { TEAM_KALENDER_API_URL } from "./config.js";
 import {
   fetchAllEvents,
+  fetchMembers,
   insertEvent,
   deleteEventById,
+  createMember,
+  deleteMemberById,
   startEventPolling,
 } from "./supabase-events.js";
 import { getNrwFeiertageAsCalendarEvents } from "./nrw-feiertage.js";
@@ -27,16 +30,48 @@ const TYPE_COLORS = {
   nrw: { bg: "#e2e8f0", fg: "#0f172a" },
 };
 
+const SEL_NEW = "__new__";
+
+/** Vorgegebene Anzeigereihenfolge, danach A–Z */
+const PREFERRED_MEMBERS = ["Richard", "Manuel", "Rod", "Pano"];
+
+function sortMembersList(rows) {
+  const seen = new Set();
+  const out = [];
+  for (const n of PREFERRED_MEMBERS) {
+    const f = (rows || []).find((m) => m.name === n);
+    if (f) {
+      out.push(f);
+      seen.add(f.id);
+    }
+  }
+  const rest = (rows || [])
+    .filter((m) => !seen.has(m.id))
+    .sort((a, b) => a.name.localeCompare(b.name, "de"));
+  return [...out, ...rest];
+}
+
 let calendar = null;
 let dbRows = [];
+let memberRows = [];
 let searchQuery = "";
 let nrwSourceId = "nrw-feiertage";
+let memberMenuOpen = false;
+/** @type {string | null} */
+let formMemberId = null;
+
 const els = {
   cal: null,
   toast: null,
   modalOvl: null,
   modalOvl2: null,
-  formName: null,
+  modalTeam: null,
+  formMemberTrigger: null,
+  formMemberText: null,
+  formMemberMenu: null,
+  formNewWrap: null,
+  formNewName: null,
+  formNewAdd: null,
   formType: null,
   formStart: null,
   formEnd: null,
@@ -48,6 +83,10 @@ const els = {
   search: null,
   badge: null,
   btnCreate: null,
+  btnTeam: null,
+  teamList: null,
+  teamClose: null,
+  teamClose2: null,
   btnViewMonth: null,
   btnViewWeek: null,
   btnViewYear: null,
@@ -76,7 +115,6 @@ function toYmd(d) {
   return `${y}-${m}-${day}`;
 }
 
-/** end_date inklusiv → FullCalendar all-day (end exklusiv) */
 function inclusiveEndToFcEndYmd(ymd) {
   const d = new Date(ymd + "T12:00:00");
   d.setDate(d.getDate() + 1);
@@ -86,9 +124,10 @@ function inclusiveEndToFcEndYmd(ymd) {
 function rowToFcEvent(row) {
   const t = row.type;
   const col = TYPE_COLORS[t] || TYPE_COLORS.sonstiges;
+  const n = row.member_name || "—";
   return {
     id: `db-${row.id}`,
-    title: `${row.name} · ${TYPE_LABELS[t] || t}`,
+    title: `${n} · ${TYPE_LABELS[t] || t}`,
     start: row.start_date,
     end: inclusiveEndToFcEndYmd(row.end_date),
     allDay: true,
@@ -99,7 +138,7 @@ function rowToFcEvent(row) {
       source: "db",
       rowId: row.id,
       type: t,
-      name: row.name,
+      name: n,
       note: row.note || "",
       startD: row.start_date,
       endD: row.end_date,
@@ -126,8 +165,108 @@ function closeModal(ov) {
   ov.setAttribute("aria-hidden", "true");
 }
 
+function getMemberNameById(id) {
+  const m = memberRows.find((x) => x.id === id);
+  return m ? m.name : null;
+}
+
+function setFormMemberId(id) {
+  formMemberId = id;
+  if (!id) {
+    els.formMemberText.textContent = "Teammitglied wählen";
+    return;
+  }
+  if (id === SEL_NEW) {
+    els.formMemberText.textContent = "Neuen Benutzer anlegen";
+    return;
+  }
+  els.formMemberText.textContent = getMemberNameById(id) || "—";
+}
+
+function buildMemberOptions() {
+  if (!els.formMemberMenu) return;
+  els.formMemberMenu.innerHTML = "";
+  (memberRows || []).forEach((m) => {
+    const li = document.createElement("li");
+    li.setAttribute("role", "option");
+    li.className = "tk-select-option";
+    li.dataset.id = m.id;
+    li.textContent = m.name;
+    if (formMemberId === m.id) li.setAttribute("aria-selected", "true");
+    els.formMemberMenu.appendChild(li);
+  });
+  const liN = document.createElement("li");
+  liN.setAttribute("role", "option");
+  liN.className = "tk-select-option tk-select-option--new";
+  liN.dataset.id = SEL_NEW;
+  liN.innerHTML = '<i class="ri-user-add-line" aria-hidden="true"></i> Neuen Benutzer hinzufügen';
+  els.formMemberMenu.appendChild(liN);
+}
+
+function openMemberMenu() {
+  const wrap = document.getElementById("member-select");
+  if (wrap) wrap.classList.add("is-menu-open");
+  buildMemberOptions();
+  memberMenuOpen = true;
+  els.formMemberMenu.hidden = false;
+  els.formMemberTrigger.setAttribute("aria-expanded", "true");
+}
+
+function closeMemberMenu() {
+  const wrap = document.getElementById("member-select");
+  if (wrap) wrap.classList.remove("is-menu-open");
+  memberMenuOpen = false;
+  if (els.formMemberMenu) els.formMemberMenu.hidden = true;
+  if (els.formMemberTrigger) els.formMemberTrigger.setAttribute("aria-expanded", "false");
+}
+
+function renderTeamList() {
+  if (!els.teamList) return;
+  els.teamList.innerHTML = "";
+  (memberRows || []).forEach((m) => {
+    const li = document.createElement("li");
+    li.className = "tk-team-row";
+    li.innerHTML = `<span class="tk-team-name">${escapeHtml(m.name)}</span>
+      <button type="button" class="tk-team-del btn-icon-danger" data-id="${m.id}" title="Entfernen">
+        <i class="ri-delete-bin-line" aria-hidden="true"></i>
+      </button>`;
+    els.teamList.appendChild(li);
+  });
+  els.teamList.querySelectorAll(".tk-team-del").forEach((b) => {
+    b.addEventListener("click", async () => {
+      const id = b.getAttribute("data-id");
+      if (!id) return;
+      if (!confirm("Teammitglied wirklich löschen? (Nur möglich ohne zugehörige Einträge.)")) return;
+      try {
+        await deleteMemberById(id);
+        memberRows = sortMembersList(await fetchMembers());
+        renderTeamList();
+        buildMemberOptions();
+        if (formMemberId === id) {
+          setFormMemberId(null);
+        }
+        toast("Teammitglied entfernt", "ok");
+      } catch (e) {
+        console.error(e);
+        toast(e.message || "Löschen nicht möglich", "err");
+      }
+    });
+  });
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
 function openCreateModal(preset) {
-  els.formName.value = "";
+  formMemberId = null;
+  setFormMemberId(null);
+  buildMemberOptions();
+  els.formNewWrap.hidden = true;
+  if (els.formNewName) els.formNewName.value = "";
+  closeMemberMenu();
   els.formType.value = "urlaub";
   els.formNote.value = "";
   if (preset && preset.start) {
@@ -144,7 +283,7 @@ function openCreateModal(preset) {
   if (els.formEnd.value < els.formStart.value) els.formEnd.value = els.formStart.value;
   els.modalOvl.classList.add("is-open");
   els.modalOvl.setAttribute("aria-hidden", "false");
-  els.formName.focus();
+  els.formMemberTrigger.focus();
 }
 
 function openDetailFromEvent(ev) {
@@ -180,7 +319,13 @@ async function init() {
   els.toast = document.getElementById("toast-container");
   els.modalOvl = document.getElementById("modal-create");
   els.modalOvl2 = document.getElementById("modal-detail");
-  els.formName = document.getElementById("f-name");
+  els.modalTeam = document.getElementById("modal-team");
+  els.formMemberTrigger = document.getElementById("f-member-trigger");
+  els.formMemberText = document.getElementById("f-member-text");
+  els.formMemberMenu = document.getElementById("f-member-menu");
+  els.formNewWrap = document.getElementById("f-new-member-wrap");
+  els.formNewName = document.getElementById("f-new-member-name");
+  els.formNewAdd = document.getElementById("f-new-member-add");
   els.formType = document.getElementById("f-type");
   els.formStart = document.getElementById("f-start");
   els.formEnd = document.getElementById("f-end");
@@ -192,6 +337,10 @@ async function init() {
   els.search = document.getElementById("header-search");
   els.badge = document.getElementById("sync-badge");
   els.btnCreate = document.getElementById("btn-new-entry");
+  els.btnTeam = document.getElementById("btn-team");
+  els.teamList = document.getElementById("team-list");
+  els.teamClose = document.getElementById("team-close");
+  els.teamClose2 = document.getElementById("team-close-2");
   els.btnViewMonth = document.getElementById("view-month");
   els.btnViewWeek = document.getElementById("view-week");
   els.btnViewYear = document.getElementById("view-year");
@@ -202,7 +351,9 @@ async function init() {
   }
 
   try {
-    dbRows = await fetchAllEvents();
+    const [ev, mem] = await Promise.all([fetchAllEvents(), fetchMembers()]);
+    dbRows = ev;
+    memberRows = sortMembersList(mem);
     els.badge.classList.remove("is-offline");
     els.badge.querySelector(".sync-label").textContent = "Online (Sync)";
   } catch (e) {
@@ -301,7 +452,7 @@ async function init() {
     if (!calendar) return;
     const t = calendar.view.type;
     [els.btnViewMonth, els.btnViewWeek, els.btnViewYear].forEach((b) =>
-      b.setAttribute("aria-pressed", "false")
+      b.setAttribute("aria-pressed", "false"),
     );
     if (t === "dayGridMonth") els.btnViewMonth.setAttribute("aria-pressed", "true");
     else if (t === "timeGridWeek") els.btnViewWeek.setAttribute("aria-pressed", "true");
@@ -309,14 +460,19 @@ async function init() {
   };
 
   calendar.render();
+  renderTeamList();
   rebuildDbEvents();
+  buildMemberOptions();
   syncViewButtons();
 
   startEventPolling(
     {
-      onData: (rows) => {
-        dbRows = rows;
+      onData: ({ events, members }) => {
+        dbRows = events;
+        memberRows = sortMembersList(members);
         rebuildDbEvents();
+        renderTeamList();
+        if (memberMenuOpen) buildMemberOptions();
       },
       onStatus: (st) => {
         const online = st === "ok";
@@ -326,7 +482,7 @@ async function init() {
           : "Offline";
       },
     },
-    4000
+    4000,
   );
 
   els.btnViewMonth.addEventListener("click", () => {
@@ -345,20 +501,62 @@ async function init() {
     openCreateModal({ start: ymd, end: ymd });
   });
 
+  if (els.btnTeam) {
+    els.btnTeam.addEventListener("click", () => {
+      renderTeamList();
+      els.modalTeam.classList.add("is-open");
+      els.modalTeam.setAttribute("aria-hidden", "false");
+    });
+  }
+  if (els.teamClose)
+    els.teamClose.addEventListener("click", () => {
+      closeModal(els.modalTeam);
+    });
+  if (els.teamClose2)
+    els.teamClose2.addEventListener("click", () => {
+      closeModal(els.modalTeam);
+    });
+  if (els.modalTeam)
+    els.modalTeam.addEventListener("click", (e) => {
+      if (e.target === els.modalTeam) closeModal(els.modalTeam);
+    });
+
   document.getElementById("m-cancel").addEventListener("click", () => {
+    closeMemberMenu();
     closeModal(els.modalOvl);
   });
   document.getElementById("m-close").addEventListener("click", () => {
+    closeMemberMenu();
     closeModal(els.modalOvl);
   });
   document.getElementById("m-save").addEventListener("click", async () => {
-    const name = els.formName.value.trim();
     const type = els.formType.value;
     const s = els.formStart.value;
     const e = els.formEnd.value;
-    if (!name) {
-      toast("Bitte Name ausfüllen", "err");
+    let mid = formMemberId;
+    if (!mid) {
+      toast("Bitte Teammitglied wählen", "err");
       return;
+    }
+    if (mid === SEL_NEW) {
+      const nn = (els.formNewName && els.formNewName.value.trim()) || "";
+      if (!nn) {
+        toast("Bitte Namen für neues Teammitglied eingeben", "err");
+        return;
+      }
+      try {
+        const created = await createMember(nn);
+        memberRows = sortMembersList(await fetchMembers());
+        buildMemberOptions();
+        renderTeamList();
+        mid = created.id;
+        setFormMemberId(mid);
+        els.formNewWrap.hidden = true;
+      } catch (err) {
+        console.error(err);
+        toast(err.message || "Anlegen fehlgeschlagen", "err");
+        return;
+      }
     }
     if (!s || !e) {
       toast("Start- und Enddatum setzen", "err");
@@ -370,21 +568,88 @@ async function init() {
     }
     try {
       await insertEvent({
-        name,
+        member_id: mid,
         type,
         start_date: s,
         end_date: e,
         note: els.formNote.value.trim() || null,
       });
+      closeMemberMenu();
       closeModal(els.modalOvl);
       toast("Eintrag gespeichert", "ok");
       dbRows = await fetchAllEvents();
+      memberRows = sortMembersList(await fetchMembers());
       rebuildDbEvents();
+      renderTeamList();
     } catch (err) {
       console.error(err);
       toast(err.message || "Speichern fehlgeschlagen", "err");
     }
   });
+
+  if (els.formMemberTrigger) {
+    els.formMemberTrigger.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (memberMenuOpen) closeMemberMenu();
+      else openMemberMenu();
+    });
+  }
+  if (els.formMemberMenu) {
+    els.formMemberMenu.addEventListener("click", (e) => {
+      const li = e.target && e.target.closest("li.tk-select-option");
+      if (!li || !els.formMemberMenu.contains(li)) return;
+      e.stopPropagation();
+      const id = li.dataset.id;
+      if (id === SEL_NEW) {
+        setFormMemberId(SEL_NEW);
+        els.formNewWrap.hidden = false;
+        if (els.formNewName) {
+          els.formNewName.value = "";
+          els.formNewName.focus();
+        }
+        closeMemberMenu();
+        return;
+      }
+      formMemberId = id;
+      setFormMemberId(id);
+      els.formNewWrap.hidden = true;
+      closeMemberMenu();
+    });
+  }
+  if (els.formNewAdd) {
+    els.formNewAdd.addEventListener("click", async () => {
+      const nn = (els.formNewName && els.formNewName.value.trim()) || "";
+      if (!nn) {
+        toast("Namen eingeben", "err");
+        return;
+      }
+      try {
+        const created = await createMember(nn);
+        memberRows = sortMembersList(await fetchMembers());
+        formMemberId = created.id;
+        setFormMemberId(created.id);
+        buildMemberOptions();
+        els.formNewWrap.hidden = true;
+        renderTeamList();
+        toast("Teammitglied angelegt", "ok");
+      } catch (err) {
+        console.error(err);
+        toast(err.message || "Anlegen fehlgeschlagen", "err");
+      }
+    });
+  }
+  document.addEventListener("click", (e) => {
+    if (e.target && typeof e.target.closest === "function" && e.target.closest("#member-select")) return;
+    closeMemberMenu();
+  });
+  if (els.modalOvl) {
+    els.modalOvl.addEventListener("click", (e) => {
+      if (e.target === els.modalOvl) {
+        closeMemberMenu();
+        closeModal(els.modalOvl);
+      }
+    });
+  }
 
   document.getElementById("d-close").addEventListener("click", () => {
     closeModal(els.modalOvl2);
@@ -395,9 +660,6 @@ async function init() {
   });
   els.modalOvl2.addEventListener("click", (e) => {
     if (e.target === els.modalOvl2) closeModal(els.modalOvl2);
-  });
-  els.modalOvl.addEventListener("click", (e) => {
-    if (e.target === els.modalOvl) closeModal(els.modalOvl);
   });
   els.detailDelete.addEventListener("click", async () => {
     if (!detailEventId) return;

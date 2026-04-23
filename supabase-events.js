@@ -1,9 +1,13 @@
 /**
  * ROOTS Team-Kalender – nur HTTP zur Edge Function (kein Supabase-Key im Browser).
- * Service Role liegt ausschließlich serverseitig in der Function.
  */
 import { TEAM_KALENDER_API_URL } from "./config.js";
 
+/**
+ * @param {string} method
+ * @param {string} [pathAndQuery] z. B. "" oder "?list=members" oder "?id=x&target=member"
+ * @param {object | null} body
+ */
 async function apiJson(method, pathAndQuery, body) {
   const u = pathAndQuery
     ? `${TEAM_KALENDER_API_URL}${String(pathAndQuery).startsWith("?") ? pathAndQuery : `?${pathAndQuery}`}`
@@ -33,29 +37,57 @@ async function apiJson(method, pathAndQuery, body) {
 }
 
 /**
- * @returns {Promise<Array<{id:string,name:string,type:string,start_date:string,end_date:string,note:string|null,created_at:string}>>}
+ * @returns {Promise<Array<{id:string,member_id:string,member_name:string|null,type:string,start_date:string,end_date:string,note:string|null,created_at:string}>>}
  */
 export async function fetchAllEvents() {
   return (await apiJson("GET", "", null)) || [];
 }
 
 /**
- * @param {{ name: string, type: string, start_date: string, end_date: string, note?: string | null }} row
+ * @returns {Promise<Array<{id:string,name:string,created_at:string}>>}
  */
-export async function insertEvent(row) {
-  return await apiJson("POST", "", row);
+export async function fetchMembers() {
+  return (await apiJson("GET", "?list=members", null)) || [];
+}
+
+/**
+ * @param {string} name
+ * @returns {Promise<{id:string,name:string,created_at:string}>}
+ */
+export async function createMember(name) {
+  return await apiJson("POST", "", { kind: "member", name });
 }
 
 /**
  * @param {string} id
+ * @param {{ type: "event" | "member" }} [opts]
  */
-export async function deleteEventById(id) {
-  return await apiJson("DELETE", `?id=${encodeURIComponent(id)}`, null);
+export async function deleteById(id, opts) {
+  const t = (opts && opts.type) || "event";
+  const q =
+    t === "member" ? `?id=${encodeURIComponent(id)}&target=member` : `?id=${encodeURIComponent(id)}`;
+  return await apiJson("DELETE", q, null);
+}
+
+/** @param {string} id */
+export function deleteEventById(id) {
+  return deleteById(id, { type: "event" });
+}
+
+/** @param {string} id */
+export function deleteMemberById(id) {
+  return deleteById(id, { type: "member" });
 }
 
 /**
- * Regelmäßig Daten holen (ersetzt Realtime; kein Anon-Key im Client).
- * @param {{ onData?: (rows: object[]) => void, onStatus?: (s: "ok" | "err") => void }} h
+ * @param {{ member_id: string, type: string, start_date: string, end_date: string, note?: string | null }} row
+ */
+export async function insertEvent(row) {
+  return await apiJson("POST", "", { kind: "event", ...row });
+}
+
+/**
+ * @param {{ onData?: (p: { events: object[]; members: object[] }) => void, onStatus?: (s: "ok" | "err") => void }} h
  * @param {number} [intervalMs=4000]
  * @returns {() => void} stop
  */
@@ -64,9 +96,9 @@ export function startEventPolling(h, intervalMs = 4000) {
   const tick = async () => {
     if (stopped) return;
     try {
-      const rows = await fetchAllEvents();
+      const [events, members] = await Promise.all([fetchAllEvents(), fetchMembers()]);
       if (stopped) return;
-      h.onData?.(rows);
+      h.onData?.({ events, members });
       h.onStatus?.("ok");
     } catch {
       h.onStatus?.("err");
