@@ -73,9 +73,12 @@ const els = {
   formNewName: null,
   formNewAdd: null,
   formType: null,
+  formTypeChips: null,
   formStart: null,
   formEnd: null,
   formNote: null,
+  datePresets: null,
+  formToday14: null,
   dName: null,
   dType: null,
   dRange: null,
@@ -113,6 +116,24 @@ function toYmd(d) {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+/** @param {string} ymd Lokal YYYY-MM-DD, @param {number} n Tage dazu */
+function ymdAddDays(ymd, n) {
+  const d = new Date(ymd + "T12:00:00");
+  d.setDate(d.getDate() + n);
+  return toYmd(d);
+}
+
+/**
+ * Dauer in Kalendertagen inkl. Start- und Endtag (1 Tag: nur Start).
+ * @param {string} ymd
+ * @param {number} inclusiveDays
+ */
+function setEndFromInclusiveDuration(ymd, inclusiveDays) {
+  if (!ymd || !els.formEnd) return;
+  const days = Math.max(1, Math.floor(inclusiveDays));
+  els.formEnd.value = ymdAddDays(ymd, days - 1);
 }
 
 function inclusiveEndToFcEndYmd(ymd) {
@@ -261,6 +282,18 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
+function setFormTypeValue(type) {
+  if (!els.formType) return;
+  const t = type && Object.prototype.hasOwnProperty.call(TYPE_LABELS, type) ? type : "urlaub";
+  els.formType.value = t;
+  if (els.formTypeChips) {
+    els.formTypeChips.querySelectorAll(".tk-chip").forEach((btn) => {
+      const on = (btn.getAttribute("data-type") || "") === t;
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+}
+
 function openCreateModal(preset) {
   formMemberId = null;
   setFormMemberId(null);
@@ -268,7 +301,7 @@ function openCreateModal(preset) {
   els.formNewWrap.hidden = true;
   if (els.formNewName) els.formNewName.value = "";
   closeMemberMenu();
-  els.formType.value = "urlaub";
+  setFormTypeValue("urlaub");
   els.formNote.value = "";
   if (preset && preset.start) {
     const s = preset.start;
@@ -328,9 +361,12 @@ async function init() {
   els.formNewName = document.getElementById("f-new-member-name");
   els.formNewAdd = document.getElementById("f-new-member-add");
   els.formType = document.getElementById("f-type");
+  els.formTypeChips = document.getElementById("f-type-chips");
   els.formStart = document.getElementById("f-start");
   els.formEnd = document.getElementById("f-end");
   els.formNote = document.getElementById("f-note");
+  els.datePresets = document.getElementById("f-date-presets");
+  els.formToday14 = document.getElementById("f-today-14");
   els.dName = document.getElementById("d-name");
   els.dType = document.getElementById("d-type");
   els.dRange = document.getElementById("d-range");
@@ -346,6 +382,43 @@ async function init() {
   els.btnViewWeek = document.getElementById("view-week");
   els.btnViewYear = document.getElementById("view-year");
   els.detailDelete = document.getElementById("btn-delete-entry");
+
+  if (els.formType) setFormTypeValue(els.formType.value);
+
+  if (els.formTypeChips) {
+    els.formTypeChips.addEventListener("click", (e) => {
+      const btn = e.target && e.target.closest(".tk-chip[data-type]");
+      if (!btn) return;
+      setFormTypeValue(btn.getAttribute("data-type") || "urlaub");
+    });
+  }
+  if (els.datePresets) {
+    els.datePresets.addEventListener("click", (e) => {
+      const b = e.target && e.target.closest("button[data-inclusivedays]");
+      if (!b) return;
+      if (!els.formStart || !els.formStart.value) {
+        toast("Zuerst ein Startdatum wählen", "err");
+        return;
+      }
+      const d = parseInt(b.getAttribute("data-inclusivedays") || "1", 10);
+      setEndFromInclusiveDuration(els.formStart.value, d);
+    });
+  }
+  if (els.formToday14) {
+    els.formToday14.addEventListener("click", () => {
+      if (!els.formStart || !els.formEnd) return;
+      const todayYmd = toYmd(new Date());
+      els.formStart.value = todayYmd;
+      setEndFromInclusiveDuration(todayYmd, 14);
+    });
+  }
+  if (els.formStart) {
+    els.formStart.addEventListener("change", () => {
+      if (els.formEnd && els.formStart.value && els.formEnd.value < els.formStart.value) {
+        els.formEnd.value = els.formStart.value;
+      }
+    });
+  }
 
   if (!TEAM_KALENDER_API_URL || TEAM_KALENDER_API_URL.includes("<")) {
     toast("config.js: TEAM_KALENDER_API_URL prüfen", "err");
@@ -387,12 +460,7 @@ async function init() {
 
   let plugins = Array.isArray(FC.globalPlugins) ? FC.globalPlugins : [];
   if (plugins.length === 0 && FC.dayGridPlugin) {
-    plugins = [
-      FC.dayGridPlugin,
-      FC.timeGridPlugin,
-      FC.interactionPlugin,
-      FC.multiMonthPlugin,
-    ].filter(Boolean);
+    plugins = [FC.dayGridPlugin, FC.interactionPlugin, FC.multiMonthPlugin].filter(Boolean);
   }
 
   let syncViewButtons = () => void 0;
@@ -413,9 +481,12 @@ async function init() {
     selectMirror: true,
     unselectAuto: true,
     dayMaxEvents: 4,
-    weekNumbers: true,
-    weekText: "KW",
-    multiMonthMaxColumns: 3,
+    weekNumbers: false,
+    multiMonthMaxColumns: 2,
+    views: {
+      dayGridWeek: { dayMaxEvents: 5 },
+      multiMonthYear: { multiMonthMinWidth: 300 },
+    },
     buttonText: {
       today: "Heute",
       month: "Monat",
@@ -457,7 +528,7 @@ async function init() {
       b.setAttribute("aria-pressed", "false"),
     );
     if (t === "dayGridMonth") els.btnViewMonth.setAttribute("aria-pressed", "true");
-    else if (t === "timeGridWeek") els.btnViewWeek.setAttribute("aria-pressed", "true");
+    else if (t === "dayGridWeek") els.btnViewWeek.setAttribute("aria-pressed", "true");
     else if (t === "multiMonthYear") els.btnViewYear.setAttribute("aria-pressed", "true");
   };
 
@@ -497,7 +568,7 @@ async function init() {
     if (calendar) calendar.changeView("dayGridMonth");
   });
   els.btnViewWeek.addEventListener("click", () => {
-    if (calendar) calendar.changeView("timeGridWeek");
+    if (calendar) calendar.changeView("dayGridWeek");
   });
   els.btnViewYear.addEventListener("click", () => {
     if (calendar) calendar.changeView("multiMonthYear");
@@ -656,6 +727,15 @@ async function init() {
         closeMemberMenu();
         closeModal(els.modalOvl);
       }
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape" || !els.modalOvl.classList.contains("is-open")) return;
+      e.preventDefault();
+      if (memberMenuOpen) {
+        closeMemberMenu();
+        return;
+      }
+      closeModal(els.modalOvl);
     });
   }
 

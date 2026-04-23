@@ -11,7 +11,6 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.10/main.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.10/main.min.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid@6.1.10/main.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fullcalendar/multimonth@6.1.10/main.min.css" />
   <style>
     :root {
@@ -344,6 +343,14 @@
       flex-direction: column;
       padding: 2rem;
     }
+    .tk-modal--has-corner-close { position: relative; }
+    .tk-modal--has-corner-close .tk-modal-h { padding-right: 2.75rem; }
+    .tk-modal__corner-close {
+      position: absolute;
+      top: 1.5rem;
+      right: 1.5rem;
+      z-index: 2;
+    }
     .tk-modal-h {
       display: flex;
       align-items: center;
@@ -403,14 +410,83 @@
       color: var(--muted);
       margin: 0 0 6px 0;
     }
-    .tk-modal-b .tk-select + .modern-input-wrap { margin-top: 1rem; }
+    .tk-modal-b .tk-select + .field-group-type { margin-top: 1rem; }
     .form-grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 0.5rem 1rem;
-      margin-top: 1rem;
+      margin-top: 0;
     }
     .form-grid-2 + .modern-label { margin-top: 1rem; }
+    .date-range-block { margin-top: 1rem; }
+    .date-presets-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--muted);
+      margin: 0.75rem 0 0.4rem 0;
+    }
+    .tk-chip-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .tk-chip, .tk-preset {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.2rem;
+      padding: 0.35rem 0.8rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      line-height: 1.2;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--status-bg);
+      color: var(--ink);
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+    .tk-chip[aria-pressed="true"] {
+      border-color: var(--brand);
+      background: var(--brand-light);
+      color: var(--brand);
+      box-shadow: 0 0 0 1px var(--brand);
+    }
+    .tk-chip:hover, .tk-preset:hover, .tk-preset:focus-visible {
+      border-color: var(--brand);
+      background: var(--brand-light);
+      color: var(--brand);
+    }
+    .tk-preset:focus-visible, .tk-chip:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(32, 110, 251, 0.25);
+    }
+    .tk-preset--accent {
+      border-color: var(--brand);
+      background: var(--brand-light);
+      color: var(--brand);
+    }
+    .tk-preset--accent:hover, .tk-preset--accent:focus-visible {
+      background: var(--brand);
+      color: #fff;
+    }
+    .tk-type-chips { margin-top: 0.35rem; }
+    .tk-type-chips .tk-chip { text-align: center; }
+    input.tk-date-input {
+      min-height: 2.6rem;
+      width: 100%;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      input.tk-date-input { color-scheme: dark; }
+    }
+    input.tk-date-input::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      opacity: 0.6;
+    }
+    input.tk-date-input:hover::-webkit-calendar-picker-indicator, input.tk-date-input:focus::-webkit-calendar-picker-indicator {
+      opacity: 1;
+    }
     .field-sub { font-size: 0.88rem; color: var(--muted); margin: 0 0 0.75rem; line-height: 1.5; }
     .tk-modal-b .tk-new-member .modern-label { margin-top: 0; }
     .modern-input, .modern-input-wrap select {
@@ -573,7 +649,6 @@
     .fc .fc-daygrid-day-number { font-weight: 600; font-size: 0.8rem; color: var(--muted); }
     .fc .fc-day-today .fc-daygrid-day-number { color: var(--brand); }
     .fc .fc-col-header-cell { background: var(--status-bg); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
-    .fc .fc-timegrid-slots { min-height: 1.2em; }
     .fc .fc-h-event, .fc .fc-v-event { border: none; border-radius: 8px; padding: 2px 6px; font-weight: 600; font-size: 0.8rem; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15); }
     .fc .fc-h-event { margin-top: 2px; }
     .fc .fc-daygrid-day-events { margin-bottom: 0.1rem; }
@@ -583,10 +658,33 @@
     .fc .fc-daygrid-day-bg .fc-day-bottom { z-index: 0; }
     .fc .fc-daygrid-day-bg .fc-h-event, .fc .fc-h-event, .fc .fc-h-event { box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06); }
     .fc .fc-v-event { border: none; }
-    .fc .fc-timegrid { border-radius: 12px; overflow: hidden; }
-    .fc .fc-timegrid .fc-h-event, .fc .fc-timegrid .fc-v-event { font-size: 0.8rem; }
-    .fc .fc-timegrid-now-indicator-line { border-color: var(--brand); }
-    .fc .fc-timegrid-now-indicator-arrow { border-color: var(--brand); }
+
+    /* Woche (Ganztages-Raster): luftig, moderne Tages-Header */
+    .fc .fc-dayGridWeek-view {
+      --fc-today-bg-color: rgba(32, 110, 251, 0.09);
+    }
+    .fc .fc-dayGridWeek-view .fc-daygrid-day-frame { min-height: 8rem; }
+    .fc .fc-dayGridWeek-view .fc-daygrid-day { padding: 0.2rem; }
+    .fc .fc-dayGridWeek-view .fc-daygrid-day-top { padding: 0.4rem 0.45rem; }
+    .fc .fc-dayGridWeek-view .fc-daygrid-day-number { font-size: 0.95rem; font-weight: 700; }
+    .fc .fc-dayGridWeek-view .fc-col-header-cell { padding: 0.5rem 0.35rem; }
+    .fc .fc-dayGridWeek-view .fc-daygrid-day-events { min-height: 1.2rem; }
+
+    /* Jahres-Mehrmonatsansicht: Karten, Abstand, klarer Monatstitel */
+    .fc .fc-multimonth { gap: 1rem; padding: 0.25rem 0 0.5rem; }
+    .fc .fc-multimonth-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      padding: 0.45rem 0.35rem 0.5rem;
+      color: var(--ink);
+      background: var(--status-bg);
+      border-radius: 8px 8px 0 0;
+    }
+    .fc .fc-multimonth .fc-daygrid { border-top: none; }
+    .fc .fc-multimonth .fc-theme-standard th { background: var(--app-bg); }
+    @media (min-width: 1200px) {
+      .fc .fc-dayGridWeek-view .fc-daygrid-day-frame { min-height: 9.5rem; }
+    }
 
     .fc .fc-button-primary { background: var(--brand) !important; border-color: var(--brand) !important; }
     .fc .fc-button-primary:hover { background: var(--brand-dark) !important; }
@@ -654,16 +752,29 @@
     </div>
   </div>
 
-  <div id="modal-create" class="tk-modal-overlay" aria-hidden="true" role="dialog" aria-modal="true">
-    <div class="tk-modal" id="m-box">
+  <div
+    id="modal-create"
+    class="tk-modal-overlay"
+    aria-hidden="true"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="m-title"
+  >
+    <div class="tk-modal tk-modal--has-corner-close" id="m-box">
       <div class="tk-modal-h">
-        <h2 class="tk-modal-t">Eintrag erstellen</h2>
-        <button type="button" class="icon-btn" id="m-close" title="Schließen"><i class="ri-close-line" aria-hidden="true"></i></button>
+        <h2 class="tk-modal-t" id="m-title">Eintrag erstellen</h2>
       </div>
       <div class="tk-modal-b">
         <span class="modern-label">Teammitglied</span>
         <div class="tk-select" id="member-select">
-          <button type="button" class="tk-select-trigger" id="f-member-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Teammitglied wählen">
+          <button
+            type="button"
+            class="tk-select-trigger"
+            id="f-member-trigger"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+            aria-label="Teammitglied wählen"
+          >
             <span id="f-member-text">Teammitglied wählen</span>
             <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
           </button>
@@ -676,33 +787,63 @@
             </div>
           </div>
         </div>
-        <div class="modern-input-wrap modern-input-wrap--select">
-          <label class="modern-label" for="f-type">Ereignistyp</label>
-          <select id="f-type" class="modern-input" title="Ereignistyp">
-            <option value="urlaub">Urlaub</option>
-            <option value="krank">Krank / krankheitsbedingt</option>
-            <option value="homeoffice">Homeoffice</option>
-            <option value="dienstreise">Dienstreise</option>
-            <option value="sonstiges">Sonstiges</option>
-          </select>
-        </div>
-        <div class="form-grid-2">
-          <div>
-            <label class="modern-label" for="f-start">Start</label>
-            <input class="modern-input" id="f-start" type="date" required />
+        <div class="field-group-type">
+          <span class="modern-label" id="f-type-lbl">Ereignistyp</span>
+          <input type="hidden" id="f-type" value="urlaub" />
+          <div
+            class="tk-chip-row tk-type-chips"
+            id="f-type-chips"
+            role="group"
+            aria-labelledby="f-type-lbl"
+          >
+            <button type="button" class="tk-chip" data-type="urlaub" aria-pressed="true">Urlaub</button>
+            <button type="button" class="tk-chip" data-type="krank" aria-pressed="false" title="Krank / krankheitsbedingt">Krank</button>
+            <button type="button" class="tk-chip" data-type="homeoffice" aria-pressed="false">Homeoffice</button>
+            <button type="button" class="tk-chip" data-type="dienstreise" aria-pressed="false">Dienstreise</button>
+            <button type="button" class="tk-chip" data-type="sonstiges" aria-pressed="false">Sonstiges</button>
           </div>
-          <div>
-            <label class="modern-label" for="f-end">Ende</label>
-            <input class="modern-input" id="f-end" type="date" required />
+        </div>
+        <div class="date-range-block" role="group" aria-labelledby="f-dates-lbl">
+          <div id="f-dates-lbl" class="modern-label" style="margin-top:1rem; margin-bottom:0.35rem">Zeitraum</div>
+          <div class="form-grid-2">
+            <div>
+              <label class="modern-label" for="f-start">Start</label>
+              <input class="modern-input tk-date-input" id="f-start" type="date" required />
+            </div>
+            <div>
+              <label class="modern-label" for="f-end">Ende</label>
+              <input class="modern-input tk-date-input" id="f-end" type="date" required />
+            </div>
+          </div>
+          <div class="date-presets-label" id="f-today-lbl" style="margin-top:0.5rem">Ab heute</div>
+          <div class="tk-chip-row" id="f-today-preset" role="group" aria-labelledby="f-today-lbl">
+            <button
+              type="button"
+              class="tk-preset tk-preset--accent"
+              id="f-today-14"
+              title="Start auf heute, 14 inkl. Kalendertage (heute + 13)"
+            >
+              Heute: 14 Tage
+            </button>
+          </div>
+          <div class="date-presets-label" id="f-presets-lbl">Dauer ab gewähltem Start</div>
+          <div class="tk-chip-row" id="f-date-presets" role="group" aria-labelledby="f-presets-lbl">
+            <button type="button" class="tk-preset" data-inclusivedays="1" title="Ein Kalendertag">1 Tag</button>
+            <button type="button" class="tk-preset" data-inclusivedays="3" title="Drei inkl. Tage ab Start">3 Tage</button>
+            <button type="button" class="tk-preset" data-inclusivedays="7" title="Eine Woche inkl. Start">7 Tage</button>
+            <button type="button" class="tk-preset" data-inclusivedays="14" title="Zwei Wochen inkl. Start">14 Tage</button>
           </div>
         </div>
         <label class="modern-label" for="f-note">Notiz (optional)</label>
-        <input class="modern-input" id="f-note" type="text" maxlength="500" />
+        <input class="modern-input" id="f-note" type="text" maxlength="500" autocomplete="off" />
       </div>
       <div class="tk-modal-f">
         <button type="button" class="btn-revision" id="m-cancel">Abbrechen</button>
         <button type="button" class="btn-save" id="m-save">Speichern</button>
       </div>
+      <button type="button" class="icon-btn tk-modal__corner-close" id="m-close" title="Schließen" aria-label="Dialog schließen">
+        <i class="ri-close-line" aria-hidden="true"></i>
+      </button>
     </div>
   </div>
 
