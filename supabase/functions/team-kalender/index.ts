@@ -1,1 +1,251 @@
-aW1wb3J0ICJqc3I6QHN1cGFiYXNlL2Z1bmN0aW9ucy1qcy9lZGdlLXJ1bnRpbWUuZC50cyI7CmltcG9ydCB7IGNyZWF0ZUNsaWVudCB9IGZyb20gImh0dHBzOi8vZXNtLnNoL0BzdXBhYmFzZS9zdXBhYmFzZS1qc0AyLjQ5LjAiOwoKY29uc3QgREVGQVVMVF9DT1JTOiBzdHJpbmdbXSA9IFsKICAiaHR0cHM6Ly9wZ291dHplcmlzLXN0YWNrLmdpdGh1Yi5pbyIsCiAgImh0dHA6Ly8xMjcuMC4wLjE6MzAwMCIsCiAgImh0dHA6Ly9sb2NhbGhvc3Q6MzAwMCIsCiAgImh0dHA6Ly8xMjcuMC4wLjE6NTUwMCIsCiAgImh0dHA6Ly9sb2NhbGhvc3Q6NTUwMCIsCiAgImh0dHA6Ly8xMjcuMC4wLjE6ODA4MCIsCiAgImh0dHA6Ly9sb2NhbGhvc3Q6ODA4MCIsCl07CgpmdW5jdGlvbiBleHRyYU9yaWdpbnNGcm9tRW52KCk6IHN0cmluZ1tdIHsKICBjb25zdCByYXcgPSBEZW5vLmVudi5nZXQoIlRFQU1fS0FMRU5ERVJfQ09SU19PUklHSU5TIik7CiAgaWYgKCFyYXcpIHJldHVybiBbXTsKICByZXR1cm4gcmF3CiAgICAuc3BsaXQoIiwiKQogICAgLm1hcCgocykgPT4gcy50cmltKCkucmVwbGFjZSgvXC8kLywgIiIpKQogICAgLmZpbHRlcihCb29sZWFuKTsKfQoKZnVuY3Rpb24gYnVpbGRBbGxvd2VkU2V0KCk6IFNldDxzdHJpbmc+IHsKICByZXR1cm4gbmV3IFNldChbLi4uREVGQVVMVF9DT1JTLCAuLi5leHRyYU9yaWdpbnNGcm9tRW52KCldKTsKfQoKZnVuY3Rpb24gZGVmYXVsdEZhbGxiYWNrT3JpZ2luKCkgewogIHJldHVybiAiaHR0cHM6Ly9wZ291dHplcmlzLXN0YWNrLmdpdGh1Yi5pbyI7Cn0KCmZ1bmN0aW9uIGNvcnNIZWFkZXJzKHJlcTogUmVxdWVzdCkgewogIGNvbnN0IGFsbG93ZWQgPSBidWlsZEFsbG93ZWRTZXQoKTsKICBjb25zdCBvID0gcmVxLmhlYWRlcnMuZ2V0KCJvcmlnaW4iKTsKICBjb25zdCBoOiBSZWNvcmQ8c3RyaW5nLCBzdHJpbmc+ID0gewogICAgIkFjY2Vzcy1Db250cm9sLUFsbG93LUhlYWRlcnMiOgogICAgICAiYXV0aG9yaXphdGlvbiwgeC1jbGllbnQtaW5mbywgYXBpa2V5LCBjb250ZW50LXR5cGUiLAogICAgIkFjY2Vzcy1Db250cm9sLUFsbG93LU1ldGhvZHMiOiAiR0VULCBQT1NULCBERUxFVEUsIE9QVElPTlMiLAogIH07CiAgaWYgKG8gJiYgYWxsb3dlZC5oYXMobykpIHsKICAgIGhbIkFjY2Vzcy1Db250cm9sLUFsbG93LU9yaWdpbiJdID0gbzsKICB9IGVsc2UgaWYgKCFvKSB7CiAgICBoWyJBY2Nlc3MtQ29udHJvbC1BbGxvdy1PcmlnaW4iXSA9IGRlZmF1bHRGYWxsYmFja09yaWdpbigpOwogIH0KICByZXR1cm4gaDsKfQoKZnVuY3Rpb24gc2VydmljZUNsaWVudCgpIHsKICBjb25zdCB1cmwgPSBEZW5vLmVudi5nZXQoIlNVUEFCQVNFX1VSTCIpOwogIGNvbnN0IGtleSA9IERlbm8uZW52LmdldCgiU1VQQUJBU0VfU0VSVklDRV9ST0xFX0tFWSIpOwogIGlmICghdXJsIHx8ICFrZXkpIHsKICAgIHRocm93IG5ldyBFcnJvcigiTWlzc2luZyBTVVBBQkFTRV9VUkwgb3IgU1VQQUJBU0VfU0VSVklDRV9ST0xFX0tFWSIpOwogIH0KICAvLyBkYi5zY2hlbWEgemVpZ3QgYXVmIGRhcyB0ZWFtX2thbGVuZGVyIFNjaGVtYQogIHJldHVybiBjcmVhdGVDbGllbnQodXJsLCBrZXksIHsKICAgIGRiOiB7IHNjaGVtYTogInRlYW1fa2FsZW5kZXIiIH0sCiAgICBhdXRoOiB7IHBlcnNpc3RTZXNzaW9uOiBmYWxzZSwgYXV0b1JlZnJlc2hUb2tlbjogZmFsc2UgfSwKICB9KTsKfQoKdHlwZSBFdmVudFJvdyA9IHsKICBpZDogc3RyaW5nOwogIG1lbWJlcl9pZDogc3RyaW5nOwogIHR5cGU6IHN0cmluZzsKICBzdGFydF9kYXRlOiBzdHJpbmc7CiAgZW5kX2RhdGU6IHN0cmluZzsKICBub3RlOiBzdHJpbmcgfCBudWxsOwogIGNyZWF0ZWRfYXQ6IHN0cmluZzsKICB0ZWFtX21lbWJlcnM6IHsgbmFtZTogc3RyaW5nIH0gfCBudWxsOwp9OwoKRGVuby5zZXJ2ZShhc3luYyAocmVxKSA9PiB7CiAgY29uc3QgYyA9IGNvcnNIZWFkZXJzKHJlcSk7CiAgaWYgKHJlcS5tZXRob2QgPT09ICJPUFRJT05TIikgewogICAgcmV0dXJuIG5ldyBSZXNwb25zZSgib2siLCB7IGhlYWRlcnM6IGMgfSk7CiAgfQoKICBsZXQgc3VwYTsKICB0cnkgewogICAgc3VwYSA9IHNlcnZpY2VDbGllbnQoKTsKICB9IGNhdGNoIChlKSB7CiAgICByZXR1cm4gbmV3IFJlc3BvbnNlKAogICAgICBKU09OLnN0cmluZ2lmeSh7IGVycm9yOiBlIGluc3RhbmNlb2YgRXJyb3IgPyBlLm1lc3NhZ2UgOiAiY29uZmlnIiB9KSwKICAgICAgeyBzdGF0dXM6IDUwMCwgaGVhZGVyczogeyAuLi5jLCAiQ29udGVudC1UeXBlIjogImFwcGxpY2F0aW9uL2pzb24iIH0gfSwKICAgICk7CiAgfQoKICBjb25zdCB1cmwgPSBuZXcgVVJMKHJlcS51cmwpOwoKICB0cnkgewogICAgaWYgKHJlcS5tZXRob2QgPT09ICJHRVQiKSB7CiAgICAgIGlmICh1cmwuc2VhcmNoUGFyYW1zLmdldCgibGlzdCIpID09PSAibWVtYmVycyIpIHsKICAgICAgICBjb25zdCB7IGRhdGEsIGVycm9yIH0gPSBhd2FpdCBzdXBhCiAgICAgICAgICAuZnJvbSgidGVhbV9tZW1iZXJzIikKICAgICAgICAgIC5zZWxlY3QoImlkLG5hbWUsY3JlYXRlZF9hdCIpCiAgICAgICAgICAub3JkZXIoIm5hbWUiLCB7IGFzY2VuZGluZzogdHJ1ZSB9KTsKICAgICAgICBpZiAoZXJyb3IpIHRocm93IGVycm9yOwogICAgICAgIHJldHVybiBuZXcgUmVzcG9uc2UoSlNPTi5zdHJpbmdpZnkoZGF0YSA/PyBbXSksIHsKICAgICAgICAgIHN0YXR1czogMjAwLAogICAgICAgICAgaGVhZGVyczogeyAuLi5jLCAiQ29udGVudC1UeXBlIjogImFwcGxpY2F0aW9uL2pzb24iIH0sCiAgICAgICAgfSk7CiAgICAgIH0KCiAgICAgIGNvbnN0IHsgZGF0YSwgZXJyb3IgfSA9IGF3YWl0IHN1cGEKICAgICAgICAuZnJvbSgiZXZlbnRzIikKICAgICAgICAuc2VsZWN0KCJpZCxtZW1iZXJfaWQsdHlwZSxzdGFydF9kYXRlLGVuZF9kYXRlLG5vdGUsY3JlYXRlZF9hdCx0ZWFtX21lbWJlcnMobmFtZSkiKQogICAgICAgIC5vcmRlcigic3RhcnRfZGF0ZSIsIHsgYXNjZW5kaW5nOiB0cnVlIH0pOwogICAgICBpZiAoZXJyb3IpIHRocm93IGVycm9yOwogICAgICBjb25zdCByb3dzID0gKGRhdGEgPz8gW10pIGFzIEV2ZW50Um93W107CiAgICAgIGNvbnN0IGZsYXQgPSByb3dzLm1hcCgoZSkgPT4gKHsKICAgICAgICBpZDogZS5pZCwKICAgICAgICBtZW1iZXJfaWQ6IGUubWVtYmVyX2lkLAogICAgICAgIHR5cGU6IGUudHlwZSwKICAgICAgICBzdGFydF9kYXRlOiBlLnN0YXJ0X2RhdGUsCiAgICAgICAgZW5kX2RhdGU6IGUuZW5kX2RhdGUsCiAgICAgICAgbm90ZTogZS5ub3RlLAogICAgICAgIGNyZWF0ZWRfYXQ6IGUuY3JlYXRlZF9hdCwKICAgICAgICBtZW1iZXJfbmFtZTogZS50ZWFtX21lbWJlcnM/Lm5hbWUgPz8gbnVsbCwKICAgICAgfSkpOwogICAgICByZXR1cm4gbmV3IFJlc3BvbnNlKEpTT04uc3RyaW5naWZ5KGZsYXQpLCB7CiAgICAgICAgc3RhdHVzOiAyMDAsCiAgICAgICAgaGVhZGVyczogeyAuLi5jLCAiQ29udGVudC1UeXBlIjogImFwcGxpY2F0aW9uL2pzb24iIH0sCiAgICAgIH0pOwogICAgfQoKICAgIGlmIChyZXEubWV0aG9kID09PSAiUE9TVCIpIHsKICAgICAgY29uc3QgYm9keSA9IChhd2FpdCByZXEuanNvbigpKSBhcyBSZWNvcmQ8c3RyaW5nLCB1bmtub3duPjsKICAgICAgY29uc3Qga2luZCA9IFN0cmluZyhib2R5LmtpbmQgPz8gImV2ZW50IikudG9Mb3dlckNhc2UoKTsKCiAgICAgIGlmIChraW5kID09PSAibWVtYmVyIikgewogICAgICAgIGNvbnN0IG5hbWUgPSBTdHJpbmcoYm9keS5uYW1lID8/ICIiKS50cmltKCk7CiAgICAgICAgaWYgKG5hbWUubGVuZ3RoIDwgMSkgewogICAgICAgICAgcmV0dXJuIG5ldyBSZXNwb25zZSgKICAgICAgICAgICAgSlNPTi5zdHJpbmdpZnkoeyBlcnJvcjogIm5hbWUgZXJmb3JkZXJsaWNoIiB9KSwKICAgICAgICAgICAgeyBzdGF0dXM6IDQwMCwgaGVhZGVyczogeyAuLi5jLCAiQ29udGVudC1UeXBlIjogImFwcGxpY2F0aW9uL2pzb24iIH0gfSwKICAgICAgICAgICk7CiAgICAgICAgfQogICAgICAgIGNvbnN0IHsgZGF0YSwgZXJyb3IgfSA9IGF3YWl0IHN1cGEKICAgICAgICAgIC5mcm9tKCJ0ZWFtX21lbWJlcnMiKQogICAgICAgICAgLmluc2VydCh7IG5hbWUgfSkKICAgICAgICAgIC5zZWxlY3QoImlkLG5hbWUsY3JlYXRlZF9hdCIpCiAgICAgICAgICAuc2luZ2xlKCk7CiAgICAgICAgaWYgKGVycm9yKSB7CiAgICAgICAgICBjb25zdCBpc0R1cCA9CiAgICAgICAgICAgIChlcnJvciBhcyB7IGNvZGU/OiBzdHJpbmcgfSkuY29kZSA9PT0gIjIzNTA1IiB8fAogICAgICAgICAgICAvZHVwbGljYXRlfHVuaXF1ZS9pLnRlc3QoZXJyb3IubWVzc2FnZSk7CiAgICAgICAgICBpZiAoaXNEdXApIHsKICAgICAgICAgICAgcmV0dXJuIG5ldyBSZXNwb25zZSgKICAgICAgICAgICAgICBKU09OLnN0cmluZ2lmeSh7IGVycm9yOiAiRGllc2VyIE5hbWUgZXhpc3RpZXJ0IGJlcmVpdHMiIH0pLAogICAgICAgICAgICAgIHsgc3RhdHVzOiA0MDksIGhlYWRlcnM6IHsgLi4uYywgIkNvbnRlbnQtVHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIiB9IH0sCiAgICAgICAgICAgICk7CiAgICAgICAgICB9CiAgICAgICAgICB0aHJvdyBlcnJvcjsKICAgICAgICB9CiAgICAgICAgcmV0dXJuIG5ldyBSZXNwb25zZShKU09OLnN0cmluZ2lmeShkYXRhKSwgewogICAgICAgICAgc3RhdHVzOiAyMDEsCiAgICAgICAgICBoZWFkZXJzOiB7IC4uLmMsICJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiIgfSwKICAgICAgICB9KTsKICAgICAgfQoKICAgICAgY29uc3QgbWVtYmVyX2lkID0gU3RyaW5nKGJvZHkubWVtYmVyX2lkID8/ICIiKS50cmltKCk7CiAgICAgIGNvbnN0IHR5cGUgPSBTdHJpbmcoYm9keS50eXBlID8/ICIiKTsKICAgICAgY29uc3Qgc3RhcnRfZGF0ZSA9IFN0cmluZyhib2R5LnN0YXJ0X2RhdGUgPz8gIiIpOwogICAgICBjb25zdCBlbmRfZGF0ZSA9IFN0cmluZyhib2R5LmVuZF9kYXRlID8/ICIiKTsKICAgICAgY29uc3Qgbm90ZSA9CiAgICAgICAgYm9keS5ub3RlID09IG51bGwgfHwgYm9keS5ub3RlID09PSAiIiA/IG51bGwgOiBTdHJpbmcoYm9keS5ub3RlKTsKICAgICAgaWYgKCFtZW1iZXJfaWQgfHwgIXN0YXJ0X2RhdGUgfHwgIWVuZF9kYXRlKSB7CiAgICAgICAgcmV0dXJuIG5ldyBSZXNwb25zZSgKICAgICAgICAgIEpTT04uc3RyaW5naWZ5KHsgZXJyb3I6ICJtZW1iZXJfaWQsIHN0YXJ0X2RhdGUsIGVuZF9kYXRlIGVyZm9yZGVybGljaCIgfSksCiAgICAgICAgICB7IHN0YXR1czogNDAwLCBoZWFkZXJzOiB7IC4uLmMsICJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiIgfSB9LAogICAgICAgICk7CiAgICAgIH0KICAgICAgY29uc3QgYWxsb3dlZCA9IFsidXJsYXViIiwgImtyYW5rIiwgImRpZW5zdHJlaXNlIiwgInNvbnN0aWdlcyJdOwogICAgICBpZiAoIWFsbG93ZWQuaW5jbHVkZXModHlwZSkpIHsKICAgICAgICByZXR1cm4gbmV3IFJlc3BvbnNlKEpTT04uc3RyaW5naWZ5KHsgZXJyb3I6ICJVbmfDvGx0aWdlciBFcmVpZ25pc3R5cCIgfSksIHsKICAgICAgICAgIHN0YXR1czogNDAwLAogICAgICAgICAgaGVhZGVyczogeyAuLi5jLCAiQ29udGVudC1UeXBlIjogImFwcGxpY2F0aW9uL2pzb24iIH0sCiAgICAgICAgfSk7CiAgICAgIH0KICAgICAgY29uc3QgeyBkYXRhLCBlcnJvciB9ID0gYXdhaXQgc3VwYQogICAgICAgIC5mcm9tKCJldmVudHMiKQogICAgICAgIC5pbnNlcnQoeyBtZW1iZXJfaWQsIHR5cGUsIHN0YXJ0X2RhdGUsIGVuZF9kYXRlLCBub3RlIH0pCiAgICAgICAgLnNlbGVjdCgiaWQsbWVtYmVyX2lkLHR5cGUsc3RhcnRfZGF0ZSxlbmRfZGF0ZSxub3RlLGNyZWF0ZWRfYXQsdGVhbV9tZW1iZXJzKG5hbWUpIikKICAgICAgICAuc2luZ2xlKCk7CiAgICAgIGlmIChlcnJvcikgdGhyb3cgZXJyb3I7CiAgICAgIGNvbnN0IGUgPSBkYXRhIGFzIEV2ZW50Um93OwogICAgICBjb25zdCBvdXQgPSB7CiAgICAgICAgaWQ6IGUuaWQsCiAgICAgICAgbWVtYmVyX2lkOiBlLm1lbWJlcl9pZCwKICAgICAgICB0eXBlOiBlLnR5cGUsCiAgICAgICAgc3RhcnRfZGF0ZTogZS5zdGFydF9kYXRlLAogICAgICAgIGVuZF9kYXRlOiBlLmVuZF9kYXRlLAogICAgICAgIG5vdGU6IGUubm90ZSwKICAgICAgICBjcmVhdGVkX2F0OiBlLmNyZWF0ZWRfYXQsCiAgICAgICAgbWVtYmVyX25hbWU6IGUudGVhbV9tZW1iZXJzPy5uYW1lID8/IG51bGwsCiAgICAgIH07CiAgICAgIHJldHVybiBuZXcgUmVzcG9uc2UoSlNPTi5zdHJpbmdpZnkob3V0KSwgewogICAgICAgIHN0YXR1czogMjAxLAogICAgICAgIGhlYWRlcnM6IHsgLi4uYywgIkNvbnRlbnQtVHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIiB9LAogICAgICB9KTsKICAgIH0KCiAgICBpZiAocmVxLm1ldGhvZCA9PT0gIkRFTEVURSIpIHsKICAgICAgY29uc3QgaWQgPSB1cmwuc2VhcmNoUGFyYW1zLmdldCgiaWQiKTsKICAgICAgaWYgKCFpZCkgewogICAgICAgIHJldHVybiBuZXcgUmVzcG9uc2UoSlNPTi5zdHJpbmdpZnkoeyBlcnJvcjogImlkIGZlaGx0IiB9KSwgewogICAgICAgICAgc3RhdHVzOiA0MDAsCiAgICAgICAgICBoZWFkZXJzOiB7IC4uLmMsICJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiIgfSwKICAgICAgICB9KTsKICAgICAgfQogICAgICBjb25zdCB0YXJnZXQgPSAodXJsLnNlYXJjaFBhcmFtcy5nZXQoInRhcmdldCIpID8/ICJldmVudCIpLnRvTG93ZXJDYXNlKCk7CiAgICAgIGlmICh0YXJnZXQgPT09ICJtZW1iZXIiKSB7CiAgICAgICAgY29uc3QgeyBjb3VudCwgZXJyb3I6IGNFcnIgfSA9IGF3YWl0IHN1cGEKICAgICAgICAgIC5mcm9tKCJldmVudHMiKQogICAgICAgICAgLnNlbGVjdCgiaWQiLCB7IGNvdW50OiAiZXhhY3QiLCBoZWFkOiB0cnVlIH0pCiAgICAgICAgICAuZXEoIm1lbWJlcl9pZCIsIGlkKTsKICAgICAgICBpZiAoY0VycikgdGhyb3cgY0VycjsKICAgICAgICBpZiAoY291bnQgJiYgY291bnQgPiAwKSB7CiAgICAgICAgICByZXR1cm4gbmV3IFJlc3BvbnNlKAogICAgICAgICAgICBKU09OLnN0cmluZ2lmeSh7CiAgICAgICAgICAgICAgZXJyb3I6ICJLYW5uIFRlYW1taXRnbGllZCBuaWNodCBsw7ZzY2hlbjogRXMgZ2lidCBub2NoIEthbGVuZGVyZWludHLDpGdlIiwKICAgICAgICAgICAgfSksCiAgICAgICAgICAgIHsgc3RhdHVzOiA0MDksIGhlYWRlcnM6IHsgLi4uYywgIkNvbnRlbnQtVHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIiB9IH0sCiAgICAgICAgICApOwogICAgICAgIH0KICAgICAgICBjb25zdCB7IGVycm9yIH0gPSBhd2FpdCBzdXBhLmZyb20oInRlYW1fbWVtYmVycyIpLmRlbGV0ZSgpLmVxKCJpZCIsIGlkKTsKICAgICAgICBpZiAoZXJyb3IpIHRocm93IGVycm9yOwogICAgICAgIHJldHVybiBuZXcgUmVzcG9uc2UoSlNPTi5zdHJpbmdpZnkoeyBvazogdHJ1ZSB9KSwgewogICAgICAgICAgc3RhdHVzOiAyMDAsCiAgICAgICAgICBoZWFkZXJzOiB7IC4uLmMsICJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiIgfSwKICAgICAgICB9KTsKICAgICAgfQogICAgICBjb25zdCB7IGVycm9yIH0gPSBhd2FpdCBzdXBhLmZyb20oImV2ZW50cyIpLmRlbGV0ZSgpLmVxKCJpZCIsIGlkKTsKICAgICAgaWYgKGVycm9yKSB0aHJvdyBlcnJvcjsKICAgICAgcmV0dXJuIG5ldyBSZXNwb25zZShKU09OLnN0cmluZ2lmeSh7IG9rOiB0cnVlIH0pLCB7CiAgICAgICAgc3RhdHVzOiAyMDAsCiAgICAgICAgaGVhZGVyczogeyAuLi5jLCAiQ29udGVudC1UeXBlIjogImFwcGxpY2F0aW9uL2pzb24iIH0sCiAgICAgIH0pOwogICAgfQoKICAgIHJldHVybiBuZXcgUmVzcG9uc2UoSlNPTi5zdHJpbmdpZnkoeyBlcnJvcjogIk1ldGhvZCBub3QgYWxsb3dlZCIgfSksIHsKICAgICAgc3RhdHVzOiA0MDUsCiAgICAgIGhlYWRlcnM6IHsgLi4uYywgIkNvbnRlbnQtVHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIiB9LAogICAgfSk7CiAgfSBjYXRjaCAoZSkgewogICAgY29uc3QgbXNnID0gZSBpbnN0YW5jZW9mIEVycm9yID8gZS5tZXNzYWdlIDogIlNlcnZlcmZlaGxlciI7CiAgICByZXR1cm4gbmV3IFJlc3BvbnNlKEpTT04uc3RyaW5naWZ5KHsgZXJyb3I6IG1zZyB9KSwgewogICAgICBzdGF0dXM6IDUwMCwKICAgICAgaGVhZGVyczogeyAuLi5jLCAiQ29udGVudC1UeXBlIjogImFwcGxpY2F0aW9uL2pzb24iIH0sCiAgICB9KTsKICB9Cn0pOwo=
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.0";
+
+const DEFAULT_CORS: string[] = [
+  "https://pgoutzeris-stack.github.io",
+  "http://127.0.0.1:3000",
+  "http://localhost:3000",
+  "http://127.0.0.1:5500",
+  "http://localhost:5500",
+  "http://127.0.0.1:8080",
+  "http://localhost:8080",
+];
+
+function extraOriginsFromEnv(): string[] {
+  const raw = Deno.env.get("TEAM_KALENDER_CORS_ORIGINS");
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((s) => s.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+}
+
+function buildAllowedSet(): Set<string> {
+  return new Set([...DEFAULT_CORS, ...extraOriginsFromEnv()]);
+}
+
+function defaultFallbackOrigin() {
+  return "https://pgoutzeris-stack.github.io";
+}
+
+function corsHeaders(req: Request) {
+  const allowed = buildAllowedSet();
+  const o = req.headers.get("origin");
+  const h: Record<string, string> = {
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+  };
+  if (o && allowed.has(o)) {
+    h["Access-Control-Allow-Origin"] = o;
+  } else if (!o) {
+    h["Access-Control-Allow-Origin"] = defaultFallbackOrigin();
+  }
+  return h;
+}
+
+function serviceClient() {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) {
+    throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  }
+  // db.schema zeigt auf das team_kalender Schema
+  return createClient(url, key, {
+    db: { schema: "team_kalender" },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+type EventRow = {
+  id: string;
+  member_id: string;
+  type: string;
+  start_date: string;
+  end_date: string;
+  note: string | null;
+  created_at: string;
+  team_members: { name: string } | null;
+};
+
+Deno.serve(async (req) => {
+  const c = corsHeaders(req);
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: c });
+  }
+
+  let supa;
+  try {
+    supa = serviceClient();
+  } catch (e) {
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "config" }),
+      { status: 500, headers: { ...c, "Content-Type": "application/json" } },
+    );
+  }
+
+  const url = new URL(req.url);
+
+  try {
+    if (req.method === "GET") {
+      if (url.searchParams.get("list") === "members") {
+        const { data, error } = await supa
+          .from("team_members")
+          .select("id,name,created_at")
+          .order("name", { ascending: true });
+        if (error) throw error;
+        return new Response(JSON.stringify(data ?? []), {
+          status: 200,
+          headers: { ...c, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data, error } = await supa
+        .from("events")
+        .select("id,member_id,type,start_date,end_date,note,created_at,team_members(name)")
+        .order("start_date", { ascending: true });
+      if (error) throw error;
+      const rows = (data ?? []) as EventRow[];
+      const flat = rows.map((e) => ({
+        id: e.id,
+        member_id: e.member_id,
+        type: e.type,
+        start_date: e.start_date,
+        end_date: e.end_date,
+        note: e.note,
+        created_at: e.created_at,
+        member_name: e.team_members?.name ?? null,
+      }));
+      return new Response(JSON.stringify(flat), {
+        status: 200,
+        headers: { ...c, "Content-Type": "application/json" },
+      });
+    }
+
+    if (req.method === "POST") {
+      const body = (await req.json()) as Record<string, unknown>;
+      const kind = String(body.kind ?? "event").toLowerCase();
+
+      if (kind === "member") {
+        const name = String(body.name ?? "").trim();
+        if (name.length < 1) {
+          return new Response(
+            JSON.stringify({ error: "name erforderlich" }),
+            { status: 400, headers: { ...c, "Content-Type": "application/json" } },
+          );
+        }
+        const { data, error } = await supa
+          .from("team_members")
+          .insert({ name })
+          .select("id,name,created_at")
+          .single();
+        if (error) {
+          const isDup =
+            (error as { code?: string }).code === "23505" ||
+            /duplicate|unique/i.test(error.message);
+          if (isDup) {
+            return new Response(
+              JSON.stringify({ error: "Dieser Name existiert bereits" }),
+              { status: 409, headers: { ...c, "Content-Type": "application/json" } },
+            );
+          }
+          throw error;
+        }
+        return new Response(JSON.stringify(data), {
+          status: 201,
+          headers: { ...c, "Content-Type": "application/json" },
+        });
+      }
+
+      const member_id = String(body.member_id ?? "").trim();
+      const type = String(body.type ?? "");
+      const start_date = String(body.start_date ?? "");
+      const end_date = String(body.end_date ?? "");
+      const note =
+        body.note == null || body.note === "" ? null : String(body.note);
+      if (!member_id || !start_date || !end_date) {
+        return new Response(
+          JSON.stringify({ error: "member_id, start_date, end_date erforderlich" }),
+          { status: 400, headers: { ...c, "Content-Type": "application/json" } },
+        );
+      }
+      const allowed = ["urlaub", "krank", "dienstreise", "sonstiges"];
+      if (!allowed.includes(type)) {
+        return new Response(JSON.stringify({ error: "Ungültiger Ereignistyp" }), {
+          status: 400,
+          headers: { ...c, "Content-Type": "application/json" },
+        });
+      }
+      const { data, error } = await supa
+        .from("events")
+        .insert({ member_id, type, start_date, end_date, note })
+        .select("id,member_id,type,start_date,end_date,note,created_at,team_members(name)")
+        .single();
+      if (error) throw error;
+      const e = data as EventRow;
+      const out = {
+        id: e.id,
+        member_id: e.member_id,
+        type: e.type,
+        start_date: e.start_date,
+        end_date: e.end_date,
+        note: e.note,
+        created_at: e.created_at,
+        member_name: e.team_members?.name ?? null,
+      };
+      return new Response(JSON.stringify(out), {
+        status: 201,
+        headers: { ...c, "Content-Type": "application/json" },
+      });
+    }
+
+    if (req.method === "DELETE") {
+      const id = url.searchParams.get("id");
+      if (!id) {
+        return new Response(JSON.stringify({ error: "id fehlt" }), {
+          status: 400,
+          headers: { ...c, "Content-Type": "application/json" },
+        });
+      }
+      const target = (url.searchParams.get("target") ?? "event").toLowerCase();
+      if (target === "member") {
+        const { count, error: cErr } = await supa
+          .from("events")
+          .select("id", { count: "exact", head: true })
+          .eq("member_id", id);
+        if (cErr) throw cErr;
+        if (count && count > 0) {
+          return new Response(
+            JSON.stringify({
+              error: "Kann Teammitglied nicht löschen: Es gibt noch Kalendereinträge",
+            }),
+            { status: 409, headers: { ...c, "Content-Type": "application/json" } },
+          );
+        }
+        const { error } = await supa.from("team_members").delete().eq("id", id);
+        if (error) throw error;
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { ...c, "Content-Type": "application/json" },
+        });
+      }
+      const { error } = await supa.from("events").delete().eq("id", id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { ...c, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { ...c, "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Serverfehler";
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 500,
+      headers: { ...c, "Content-Type": "application/json" },
+    });
+  }
+});
