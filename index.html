@@ -1107,10 +1107,10 @@
   const vLogin=document.getElementById('roots-view-login');
   const vForgot=document.getElementById('roots-view-forgot');
   sb.auth.getSession().then(({data:{session}})=>{
-    if(session){overlay.remove();window.RootsUser._loadAndMount(sb);}
+    if(session){overlay.style.display='none';window.RootsUser._loadAndMount(sb);}
   });
   sb.auth.onAuthStateChange((event,session)=>{
-    if(session){overlay.remove();window.RootsUser._loadAndMount(sb);}
+    if(session){overlay.style.display='none';window.RootsUser._loadAndMount(sb);}
     else if(event==='SIGNED_OUT'){overlay.style.display='flex';vLogin.style.display='block';vForgot.style.display='none';}
   });
   document.getElementById('roots-login-form').addEventListener('submit',async(e)=>{
