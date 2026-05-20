@@ -46,12 +46,13 @@ const els = {
   formTypeChips: null,
   formStart: null,
   formEnd: null,
-  formTitle: null,
+  formSonstigesWrap: null,
+  formSonstigesSuffix: null,
+  formNamePrefix: null,
   formNote: null,
   datePresets: null,
   btnFromToday: null,
   rangeSummary: null,
-  formMemberLabel: null,
   autosaveStatus: null,
   modalTitle: null,
   btnDeleteEntry: null,
@@ -81,12 +82,44 @@ function setAutosaveStatus(text, state = "") {
   els.autosaveStatus.dataset.state = state;
 }
 
+function memberDisplayName() {
+  return (currentMemberName || "Nutzer").trim();
+}
+
+function buildAutoTitle(type, sonstigesSuffix = "") {
+  const name = memberDisplayName();
+  if (type === "sonstiges") {
+    const suffix = (sonstigesSuffix || "").trim();
+    return suffix ? `${name} ${suffix}` : "";
+  }
+  const label = TYPE_LABELS[type] || type;
+  return `${name} ${label}`;
+}
+
+function parseSonstigesSuffix(storedTitle) {
+  const name = memberDisplayName();
+  const t = (storedTitle || "").trim();
+  if (!t) return "";
+  const prefix = `${name} `;
+  if (t.toLowerCase().startsWith(prefix.toLowerCase())) {
+    return t.slice(prefix.length).trim();
+  }
+  const legacy = `${name} · ${TYPE_LABELS.sonstiges}`;
+  if (t === legacy) return "";
+  return t;
+}
+
 function readFormPayload() {
   const s = readYmdFromCombos("f-start") || (els.formStart && els.formStart.value) || "";
   const e = readYmdFromCombos("f-end") || (els.formEnd && els.formEnd.value) || "";
+  const type = els.formType.value;
+  const suffix =
+    type === "sonstiges" && els.formSonstigesSuffix
+      ? els.formSonstigesSuffix.value.trim()
+      : "";
   return {
-    title: (els.formTitle && els.formTitle.value.trim()) || "",
-    type: els.formType.value,
+    title: buildAutoTitle(type, suffix),
+    type,
     start_date: s,
     end_date: e,
     note: els.formNote.value.trim() || null,
@@ -94,8 +127,27 @@ function readFormPayload() {
 }
 
 function isEntryReady() {
-  const { title, start_date, end_date } = readFormPayload();
-  return Boolean(title) && Boolean(start_date) && Boolean(end_date) && end_date >= start_date;
+  const { title, type, start_date, end_date } = readFormPayload();
+  if (!start_date || !end_date || end_date < start_date) return false;
+  if (type === "sonstiges") {
+    const suffix = els.formSonstigesSuffix ? els.formSonstigesSuffix.value.trim() : "";
+    return suffix.length > 0;
+  }
+  return Boolean(title);
+}
+
+function updateSonstigesFieldVisibility() {
+  const type = els.formType ? els.formType.value : "urlaub";
+  const isSonstiges = type === "sonstiges";
+  if (els.formSonstigesWrap) {
+    els.formSonstigesWrap.hidden = !isSonstiges;
+  }
+  if (els.formNamePrefix) {
+    els.formNamePrefix.textContent = `${memberDisplayName()} `;
+  }
+  if (isSonstiges && els.formSonstigesSuffix) {
+    requestAnimationFrame(() => els.formSonstigesSuffix.focus());
+  }
 }
 
 function updateDoneButton() {
@@ -262,11 +314,10 @@ function inclusiveEndToFcEndYmd(ymd) {
 }
 
 function entryDisplayTitle(row) {
-  const custom = (row.title || "").trim();
-  if (custom) return custom;
-  const n = row.member_name || currentMemberName || "—";
+  const stored = (row.title || "").trim();
+  if (stored) return stored;
   const t = row.type === "homeoffice" ? "sonstiges" : row.type;
-  return `${n} · ${TYPE_LABELS[t] || t}`;
+  return buildAutoTitle(t, "");
 }
 
 function rowToFcEvent(row) {
@@ -371,6 +422,7 @@ function setFormTypeValue(type) {
       btn.setAttribute("aria-pressed", on ? "true" : "false");
     });
   }
+  updateSonstigesFieldVisibility();
 }
 
 function scheduleAutosave() {
@@ -424,21 +476,19 @@ function openEntryModal(preset, editRow) {
     return;
   }
   draftEventId = editRow ? editRow.id : null;
-  if (els.formMemberLabel) {
-    els.formMemberLabel.textContent = currentMemberName || "Dein Kalender";
-  }
   if (els.modalTitle) {
-    els.modalTitle.textContent = editRow ? "Eintrag bearbeiten" : "Neuer Eintrag";
+    els.modalTitle.textContent = editRow ? "Eintrag bearbeiten" : "Eintrag erstellen";
   }
   if (els.btnDeleteEntry) {
     els.btnDeleteEntry.hidden = !editRow;
   }
-  setFormTypeValue(editRow ? editRow.type : "urlaub");
-  if (els.formTitle) {
-    els.formTitle.value = editRow
-      ? (editRow.title || "").trim() || entryDisplayTitle(editRow)
-      : "";
+  const editType = editRow ? (editRow.type === "homeoffice" ? "sonstiges" : editRow.type) : "urlaub";
+  setFormTypeValue(editRow ? editType : "urlaub");
+  if (els.formSonstigesSuffix) {
+    els.formSonstigesSuffix.value =
+      editRow && editType === "sonstiges" ? parseSonstigesSuffix(editRow.title) : "";
   }
+  updateSonstigesFieldVisibility();
   els.formNote.value = editRow ? editRow.note || "" : "";
 
   let startYmd = toYmd(new Date());
@@ -463,12 +513,13 @@ function openEntryModal(preset, editRow) {
   updateRangeSummary();
   updateDoneButton();
   setAutosaveStatus("");
-  if (els.formTitle) {
-    requestAnimationFrame(() => els.formTitle.focus());
-  }
   els.modalOvl.classList.add("is-open");
   els.modalOvl.setAttribute("aria-hidden", "false");
-  if (editRow) scheduleAutosave();
+  if (editRow) {
+    scheduleAutosave();
+  } else if (editType !== "sonstiges") {
+    scheduleAutosave();
+  }
 }
 
 function waitForRootsUser(maxMs = 20000) {
@@ -519,12 +570,13 @@ async function init() {
   els.formTypeChips = document.getElementById("f-type-chips");
   els.formStart = document.getElementById("f-start");
   els.formEnd = document.getElementById("f-end");
-  els.formTitle = document.getElementById("f-title");
+  els.formSonstigesWrap = document.getElementById("f-sonstiges-wrap");
+  els.formSonstigesSuffix = document.getElementById("f-sonstiges-suffix");
+  els.formNamePrefix = document.getElementById("f-name-prefix");
   els.formNote = document.getElementById("f-note");
   els.datePresets = document.getElementById("f-date-presets");
   els.btnFromToday = document.getElementById("f-from-today");
   els.rangeSummary = document.getElementById("f-range-summary");
-  els.formMemberLabel = document.getElementById("f-member-label");
   els.autosaveStatus = document.getElementById("f-autosave-status");
   els.modalTitle = document.getElementById("m-title");
   els.btnDeleteEntry = document.getElementById("btn-delete-entry");
@@ -558,7 +610,9 @@ async function init() {
       scheduleAutosave();
     });
   }
-  if (els.formTitle) els.formTitle.addEventListener("input", scheduleAutosave);
+  if (els.formSonstigesSuffix) {
+    els.formSonstigesSuffix.addEventListener("input", scheduleAutosave);
+  }
   if (els.formNote) els.formNote.addEventListener("input", scheduleAutosave);
   if (els.btnFromToday) els.btnFromToday.addEventListener("click", setRangeFromToday);
   if (els.btnDone) {

@@ -396,6 +396,7 @@
       background: var(--bg);
       flex-shrink: 0;
     }
+    .entry-sheet__head .entry-sheet__title { flex: 1; min-width: 0; }
     .entry-sheet__title {
       margin: 0;
       font-size: 1.25rem;
@@ -403,12 +404,46 @@
       color: var(--ink);
       letter-spacing: -0.02em;
     }
-    .entry-sheet__user {
-      margin: 0.2rem 0 0;
-      font-size: 0.84rem;
-      color: var(--muted);
+    .entry-sonstiges-field[hidden] { display: none !important; }
+    .entry-prefixed-input {
+      display: flex;
+      align-items: stretch;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--bg);
     }
-    .entry-sheet__user strong { color: var(--ink); font-weight: 600; }
+    .entry-prefixed-input:focus-within {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(32, 110, 251, 0.1);
+    }
+    .entry-prefixed-input__prefix {
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      background: #f8fafc;
+      border-right: 1px solid var(--line);
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--ink);
+      white-space: nowrap;
+      flex-shrink: 0;
+      user-select: none;
+      pointer-events: none;
+    }
+    .entry-prefixed-input__field {
+      flex: 1;
+      min-width: 0;
+      height: 44px;
+      border: none;
+      padding: 0 12px;
+      font-size: 0.92rem;
+      font-family: var(--font-ui);
+      color: var(--ink);
+      background: var(--bg);
+      outline: none;
+    }
+    .entry-prefixed-input__field::placeholder { color: #94a3b8; }
     .entry-sheet__close {
       width: 40px;
       height: 40px;
@@ -1224,32 +1259,16 @@
     <div class="entry-sheet" id="m-box">
       <div class="entry-sheet__accent" aria-hidden="true"></div>
       <header class="entry-sheet__head">
-        <div>
-          <h2 class="entry-sheet__title" id="m-title">Neuer Eintrag</h2>
-          <p class="entry-sheet__user"><strong id="f-member-label">—</strong></p>
-        </div>
+        <h2 class="entry-sheet__title" id="m-title">Eintrag erstellen</h2>
         <button type="button" class="entry-sheet__close" id="m-close" title="Schließen" aria-label="Schließen">
           <i class="fa-solid fa-xmark" aria-hidden="true"></i>
         </button>
       </header>
 
       <div class="entry-sheet__body">
-        <div class="entry-block">
-          <input
-            class="entry-title-input"
-            id="f-title"
-            type="text"
-            maxlength="80"
-            autocomplete="off"
-            placeholder="Was steht im Kalender?"
-            required
-          />
-        </div>
-
         <div class="entry-block field-group-type">
-          <p class="entry-block-label" id="f-type-lbl">Art</p>
           <input type="hidden" id="f-type" value="urlaub" />
-          <div class="entry-type-row" id="f-type-chips" role="group" aria-labelledby="f-type-lbl">
+          <div class="entry-type-row" id="f-type-chips" role="group" aria-label="Abwesenheitstyp">
             <button type="button" class="entry-type-card" data-type="urlaub" aria-pressed="true">
               <i class="fa-solid fa-umbrella-beach" aria-hidden="true"></i>
               Urlaub
@@ -1260,12 +1279,27 @@
             </button>
             <button type="button" class="entry-type-card" data-type="dienstreise" aria-pressed="false">
               <i class="fa-solid fa-plane" aria-hidden="true"></i>
-              Reise
+              Dienstreise
             </button>
             <button type="button" class="entry-type-card" data-type="sonstiges" aria-pressed="false">
               <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
               Sonstiges
             </button>
+          </div>
+        </div>
+
+        <div class="entry-block entry-sonstiges-field" id="f-sonstiges-wrap" hidden>
+          <div class="entry-prefixed-input">
+            <span class="entry-prefixed-input__prefix" id="f-name-prefix" aria-hidden="true"></span>
+            <input
+              type="text"
+              class="entry-prefixed-input__field"
+              id="f-sonstiges-suffix"
+              maxlength="60"
+              autocomplete="off"
+              placeholder="Bezeichnung eingeben…"
+              aria-label="Zusatzbezeichnung für Sonstiges"
+            />
           </div>
         </div>
 
