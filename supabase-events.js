@@ -1,11 +1,11 @@
 /**
- * ROOTS Team-Kalender – nur HTTP zur Edge Function (kein Supabase-Key im Browser).
+ * ROOTS Team-Kalender – HTTP zur Edge Function (kein Anon-Key im Browser).
  */
 import { TEAM_KALENDER_API_URL } from "./config.js";
 
 /**
  * @param {string} method
- * @param {string} [pathAndQuery] z. B. "" oder "?list=members" oder "?id=x&target=member"
+ * @param {string} [pathAndQuery] z. B. "" oder "?list=members"
  * @param {object | null} body
  */
 async function apiJson(method, pathAndQuery, body) {
@@ -36,47 +36,23 @@ async function apiJson(method, pathAndQuery, body) {
   return j;
 }
 
-/**
- * @returns {Promise<Array<{id:string,member_id:string,member_name:string|null,type:string,start_date:string,end_date:string,note:string|null,created_at:string}>>}
- */
+/** @returns {Promise<Array>} */
 export async function fetchAllEvents() {
   return (await apiJson("GET", "", null)) || [];
 }
 
-/**
- * @returns {Promise<Array<{id:string,name:string,created_at:string}>>}
- */
-export async function fetchMembers() {
-  return (await apiJson("GET", "?list=members", null)) || [];
+/** @returns {Promise<Array<{holiday_date:string,label:string}>>} */
+export async function fetchNrwHolidays() {
+  return (await apiJson("GET", "?list=nrw_holidays", null)) || [];
 }
 
 /**
+ * @param {string} userId
  * @param {string} name
- * @returns {Promise<{id:string,name:string,created_at:string}>}
+ * @returns {Promise<{id:string,name:string,user_id:string|null,created_at:string}>}
  */
-export async function createMember(name) {
-  return await apiJson("POST", "", { kind: "member", name });
-}
-
-/**
- * @param {string} id
- * @param {{ type: "event" | "member" }} [opts]
- */
-export async function deleteById(id, opts) {
-  const t = (opts && opts.type) || "event";
-  const q =
-    t === "member" ? `?id=${encodeURIComponent(id)}&target=member` : `?id=${encodeURIComponent(id)}`;
-  return await apiJson("DELETE", q, null);
-}
-
-/** @param {string} id */
-export function deleteEventById(id) {
-  return deleteById(id, { type: "event" });
-}
-
-/** @param {string} id */
-export function deleteMemberById(id) {
-  return deleteById(id, { type: "member" });
+export async function ensureMemberForUser(userId, name) {
+  return await apiJson("POST", "", { kind: "ensure_member", user_id: userId, name });
 }
 
 /**
@@ -87,26 +63,14 @@ export async function insertEvent(row) {
 }
 
 /**
- * @param {{ onData?: (p: { events: object[]; members: object[] }) => void, onStatus?: (s: "ok" | "err") => void }} h
- * @param {number} [intervalMs=4000]
- * @returns {() => void} stop
+ * @param {string} id
+ * @param {{ type: string, start_date: string, end_date: string, note?: string | null }} row
  */
-export function startEventPolling(h, intervalMs = 4000) {
-  let stopped = false;
-  const tick = async () => {
-    if (stopped) return;
-    try {
-      const [events, members] = await Promise.all([fetchAllEvents(), fetchMembers()]);
-      if (stopped) return;
-      h.onData?.({ events, members });
-      h.onStatus?.("ok");
-    } catch {
-      h.onStatus?.("err");
-    }
-  };
-  const id = setInterval(tick, intervalMs);
-  return () => {
-    stopped = true;
-    clearInterval(id);
-  };
+export async function updateEvent(id, row) {
+  return await apiJson("POST", "", { kind: "event_update", id, ...row });
+}
+
+/** @param {string} id */
+export function deleteEventById(id) {
+  return apiJson("DELETE", `?id=${encodeURIComponent(id)}`, null);
 }

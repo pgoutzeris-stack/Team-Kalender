@@ -88,10 +88,22 @@ Deno.serve(async (req) => {
 
   try {
     if (req.method === "GET") {
+      if (url.searchParams.get("list") === "nrw_holidays") {
+        const { data, error } = await supa
+          .from("nrw_holidays")
+          .select("holiday_date,label")
+          .order("holiday_date", { ascending: true });
+        if (error) throw error;
+        return new Response(JSON.stringify(data ?? []), {
+          status: 200,
+          headers: { ...c, "Content-Type": "application/json" },
+        });
+      }
+
       if (url.searchParams.get("list") === "members") {
         const { data, error } = await supa
           .from("team_members")
-          .select("id,name,created_at")
+          .select("id,name,user_id,created_at")
           .order("name", { ascending: true });
         if (error) throw error;
         return new Response(JSON.stringify(data ?? []), {
@@ -125,6 +137,113 @@ Deno.serve(async (req) => {
     if (req.method === "POST") {
       const body = (await req.json()) as Record<string, unknown>;
       const kind = String(body.kind ?? "event").toLowerCase();
+
+      if (kind === "ensure_member") {
+        const user_id = String(body.user_id ?? "").trim();
+        const name = String(body.name ?? "").trim();
+        if (!user_id || name.length < 1) {
+          return new Response(
+            JSON.stringify({ error: "user_id und name erforderlich" }),
+            { status: 400, headers: { ...c, "Content-Type": "application/json" } },
+          );
+        }
+        const { data: byUser } = await supa
+          .from("team_members")
+          .select("id,name,user_id,created_at")
+          .eq("user_id", user_id)
+          .maybeSingle();
+        if (byUser) {
+          if (byUser.name !== name) {
+            const { data: updated, error: uErr } = await supa
+              .from("team_members")
+              .update({ name })
+              .eq("id", byUser.id)
+              .select("id,name,user_id,created_at")
+              .single();
+            if (uErr) throw uErr;
+            return new Response(JSON.stringify(updated), {
+              status: 200,
+              headers: { ...c, "Content-Type": "application/json" },
+            });
+          }
+          return new Response(JSON.stringify(byUser), {
+            status: 200,
+            headers: { ...c, "Content-Type": "application/json" },
+          });
+        }
+        const { data: byName } = await supa
+          .from("team_members")
+          .select("id,name,user_id,created_at")
+          .eq("name", name)
+          .maybeSingle();
+        if (byName) {
+          const { data: linked, error: lErr } = await supa
+            .from("team_members")
+            .update({ user_id })
+            .eq("id", byName.id)
+            .select("id,name,user_id,created_at")
+            .single();
+          if (lErr) throw lErr;
+          return new Response(JSON.stringify(linked), {
+            status: 200,
+            headers: { ...c, "Content-Type": "application/json" },
+          });
+        }
+        const { data, error } = await supa
+          .from("team_members")
+          .insert({ name, user_id })
+          .select("id,name,user_id,created_at")
+          .single();
+        if (error) throw error;
+        return new Response(JSON.stringify(data), {
+          status: 201,
+          headers: { ...c, "Content-Type": "application/json" },
+        });
+      }
+
+      if (kind === "event_update") {
+        const id = String(body.id ?? "").trim();
+        const type = String(body.type ?? "");
+        const start_date = String(body.start_date ?? "");
+        const end_date = String(body.end_date ?? "");
+        const note =
+          body.note == null || body.note === "" ? null : String(body.note);
+        if (!id || !start_date || !end_date) {
+          return new Response(
+            JSON.stringify({ error: "id, start_date, end_date erforderlich" }),
+            { status: 400, headers: { ...c, "Content-Type": "application/json" } },
+          );
+        }
+        const allowed = ["urlaub", "krank", "dienstreise", "sonstiges"];
+        if (!allowed.includes(type)) {
+          return new Response(JSON.stringify({ error: "Ungültiger Ereignistyp" }), {
+            status: 400,
+            headers: { ...c, "Content-Type": "application/json" },
+          });
+        }
+        const { data, error } = await supa
+          .from("events")
+          .update({ type, start_date, end_date, note })
+          .eq("id", id)
+          .select("id,member_id,type,start_date,end_date,note,created_at,team_members(name)")
+          .single();
+        if (error) throw error;
+        const e = data as EventRow;
+        const out = {
+          id: e.id,
+          member_id: e.member_id,
+          type: e.type,
+          start_date: e.start_date,
+          end_date: e.end_date,
+          note: e.note,
+          created_at: e.created_at,
+          member_name: e.team_members?.name ?? null,
+        };
+        return new Response(JSON.stringify(out), {
+          status: 200,
+          headers: { ...c, "Content-Type": "application/json" },
+        });
+      }
 
       if (kind === "member") {
         const name = String(body.name ?? "").trim();

@@ -32,6 +32,9 @@
       --app-bg: #f4f7fb;
       --shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
       --radius: 16px;
+      --app-max-w: 1400px;
+      --app-side-pad: 1.5rem;
+      --app-shell-w: min(var(--app-max-w), calc(100% - 2 * var(--app-side-pad)));
     }
 
     @media (prefers-color-scheme: dark) {
@@ -89,12 +92,13 @@
 
     /* Shell + Kopfleiste: gleicher Aufbau wie ROOTS SOP Dashboard */
     .roots-sop {
-      max-width: 1800px;
-      width: 98%;
+      width: var(--app-shell-w);
+      max-width: var(--app-max-w);
       margin: 0 auto;
-      padding: 2rem 1rem 2.5rem;
+      padding: 1rem 0 2.5rem;
       position: relative;
       z-index: 0;
+      box-sizing: border-box;
     }
     .sop-header {
       display: flex;
@@ -399,8 +403,19 @@
       transition: background 0.15s, color 0.15s;
     }
     .icon-btn:hover { background: var(--status-bg); color: var(--ink); }
-    .tk-modal-b { padding: 0; }
+    .tk-modal-b { padding: 1.35rem 1.5rem 1.5rem; display: flex; flex-direction: column; gap: 1.35rem; }
     .tk-modal-b > :first-child { margin-top: 0 !important; }
+    .tk-member-banner {
+      display: flex; align-items: center; gap: 0.65rem;
+      padding: 0.85rem 1rem; border-radius: 12px;
+      background: var(--brand-light); border: 1px solid #c7dbfa;
+      font-size: 0.9rem; font-weight: 600; color: var(--brand-dark);
+    }
+    .tk-member-banner i { color: var(--brand); }
+    .tk-autosave-status { font-size: 0.8rem; color: var(--muted); min-height: 1.1rem; }
+    .tk-autosave-status[data-state="ok"] { color: var(--success); }
+    .tk-autosave-status[data-state="err"] { color: var(--danger); }
+    .tk-autosave-status[data-state="busy"] { color: var(--brand); }
     .tk-modal-f {
       display: flex;
       justify-content: flex-end;
@@ -428,17 +443,16 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: var(--muted);
-      margin: 0 0 6px 0;
+      margin: 0 0 0.5rem 0;
     }
-    .tk-modal-b .tk-select + .field-group-type { margin-top: 1rem; }
     .form-grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0.5rem 1rem;
+      gap: 1rem 1.25rem;
       margin-top: 0;
     }
     .form-grid-2 + .modern-label { margin-top: 1rem; }
-    .date-range-block { margin-top: 1rem; }
+    .date-range-block { margin-top: 0; }
     .date-presets-label {
       display: block;
       font-size: 0.72rem;
@@ -514,7 +528,7 @@
       font-family: var(--font-ui) !important;
       color: var(--ink);
       line-height: 1.2;
-      background: var(--status-bg);
+      background: var(--bg);
       border: 1px solid var(--line);
       border-radius: 8px;
       cursor: pointer;
@@ -859,6 +873,35 @@
     /* Sanfter Übergang beim Auth-Overlay */
     #roots-auth-overlay { transition: opacity 0.2s ease; }
 
+
+    .fc .fc-daygrid-day.tk-day-nrw .fc-daygrid-day-frame {
+      background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%);
+    }
+    .fc .fc-daygrid-day.tk-day-nrw .fc-daygrid-day-number { color: var(--ink); font-weight: 700; }
+    .fc-event-nrw, .event-type-nrw { font-size: 0.72rem; font-weight: 600; }
+    .tk-legend {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem 1.25rem;
+      margin-top: 1.25rem; padding: 1rem 1.25rem;
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+    }
+    .tk-legend-title {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--muted); width: 100%; margin-bottom: 0.15rem;
+    }
+    .tk-legend-item {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      font-size: 0.82rem; font-weight: 600; color: var(--ink);
+    }
+    .tk-legend-swatch {
+      width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+    .tk-legend-swatch--urlaub { background: #206efb; }
+    .tk-legend-swatch--krank { background: #dc2626; }
+    .tk-legend-swatch--dienstreise { background: #f59e0b; }
+    .tk-legend-swatch--sonstiges { background: #475569; }
+    .tk-legend-swatch--nrw { background: #e2e8f0; border-color: #cbd5e1; }
     @media (prefers-color-scheme: dark) {
       .tk-select-trigger, .tk-select-menu { box-shadow: 0 1px 0 rgba(0,0,0,0.2); }
     }
@@ -987,16 +1030,6 @@
           </svg>
           <input type="search" class="search-bar" id="header-search" placeholder="Nach Name suchen" autocomplete="off" />
         </div>
-        <div class="header-sep" aria-hidden="true"></div>
-        <button type="button" class="btn-revision header-action-btn" id="btn-team" title="Team verwalten">
-          <i class="fa-solid fa-users" aria-hidden="true"></i>
-          Team
-        </button>
-        <div class="header-sep" aria-hidden="true"></div>
-        <span id="sync-badge" class="sync-badge offline" title="Abgleich per HTTP">
-          <i class="fa-solid fa-cloud" aria-hidden="true"></i>
-          <span class="sync-label">Offline</span>
-        </span>
         <button type="button" class="btn-save header-action-btn" id="btn-new-entry" title="Eintrag erstellen">
           <i class="fa-solid fa-plus" aria-hidden="true"></i>
           Eintrag
@@ -1022,6 +1055,14 @@
       </div>
       <div class="track-body">
         <div class="tk-calendar-wrap" id="calendar" role="region" aria-label="Kalender"></div>
+        <div class="tk-legend" aria-label="Legende">
+          <span class="tk-legend-title">Legende</span>
+          <span class="tk-legend-item"><span class="tk-legend-swatch tk-legend-swatch--urlaub"></span> Urlaub</span>
+          <span class="tk-legend-item"><span class="tk-legend-swatch tk-legend-swatch--krank"></span> Krank</span>
+          <span class="tk-legend-item"><span class="tk-legend-swatch tk-legend-swatch--dienstreise"></span> Dienstreise</span>
+          <span class="tk-legend-item"><span class="tk-legend-swatch tk-legend-swatch--sonstiges"></span> Sonstiges</span>
+          <span class="tk-legend-item"><span class="tk-legend-swatch tk-legend-swatch--nrw"></span> NRW-Feiertag</span>
+        </div>
       </div>
     </div>
   </div>
@@ -1039,28 +1080,11 @@
         <h2 class="tk-modal-t" id="m-title">Eintrag erstellen</h2>
       </div>
       <div class="tk-modal-b">
-        <span class="modern-label">Teammitglied</span>
-        <div class="tk-select" id="member-select">
-          <button
-            type="button"
-            class="tk-select-trigger"
-            id="f-member-trigger"
-            aria-haspopup="listbox"
-            aria-expanded="false"
-            aria-label="Teammitglied wählen"
-          >
-            <span id="f-member-text">Teammitglied wählen</span>
-            <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
-          </button>
-          <ul class="tk-select-menu" id="f-member-menu" role="listbox" hidden></ul>
-          <div id="f-new-member-wrap" class="tk-new-member" hidden>
-            <div class="modern-label" style="margin-top:0">Neuer Name</div>
-            <div class="tk-new-row">
-              <input class="modern-input" id="f-new-member-name" type="text" autocomplete="name" placeholder="Vor- und Nachname" maxlength="120" />
-              <button type="button" class="btn-inline" id="f-new-member-add">Anlegen &amp; wählen</button>
-            </div>
-          </div>
+        <div class="tk-member-banner">
+          <i class="fa-solid fa-user" aria-hidden="true"></i>
+          <span>Eintrag für: <strong id="f-member-label">—</strong></span>
         </div>
+        <p class="tk-autosave-status" id="f-autosave-status" aria-live="polite"></p>
         <div class="field-group-type">
           <span class="modern-label" id="f-type-lbl">Ereignistyp</span>
           <input type="hidden" id="f-type" value="urlaub" />
@@ -1077,7 +1101,7 @@
           </div>
         </div>
         <div class="date-range-block" role="group" aria-labelledby="f-dates-lbl">
-          <div id="f-dates-lbl" class="modern-label" style="margin-top:1rem; margin-bottom:0.35rem">Zeitraum</div>
+          <div id="f-dates-lbl" class="modern-label">Zeitraum</div>
           <div class="form-grid-2">
             <div>
               <label class="modern-label" for="f-start-d">Start</label>
@@ -1120,45 +1144,6 @@
       <button type="button" class="icon-btn tk-modal__corner-close" id="m-close" title="Schließen" aria-label="Dialog schließen">
         <i class="fa-solid fa-xmark" aria-hidden="true"></i>
       </button>
-    </div>
-  </div>
-
-  <div id="modal-team" class="tk-modal-overlay" aria-hidden="true" role="dialog" aria-modal="true">
-    <div class="tk-modal">
-      <div class="tk-modal-h">
-        <h2 class="tk-modal-t">Team</h2>
-        <button type="button" class="icon-btn" id="team-close-2" title="Schließen"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-      </div>
-      <div class="tk-modal-b">
-        <p class="field-sub">Gespeicherte Teammitglieder. Löschen nur möglich, wenn keine Kalendereinträge mehr dazu existieren.</p>
-        <ul class="tk-team-list" id="team-list" aria-label="Teammitglieder"></ul>
-      </div>
-      <div class="tk-modal-f">
-        <button type="button" class="btn-save" id="team-close">Schließen</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="modal-detail" class="tk-modal-overlay" aria-hidden="true" role="dialog" aria-modal="true">
-    <div class="tk-modal">
-      <div class="tk-modal-h">
-        <h2 class="tk-modal-t">Eintrag</h2>
-        <button type="button" class="icon-btn" id="d-close-2" title="Schließen"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-      </div>
-      <div class="tk-modal-b" id="d-body">
-        <div class="tk-dl"><span class="lab">Name</span><br /><span class="val" id="d-name">—</span></div>
-        <div class="tk-dl"><span class="lab">Ereignistyp</span><br /><span class="val" id="d-type">—</span></div>
-        <div class="tk-dl"><span class="lab">Zeitraum</span><br /><span class="val" id="d-range">—</span></div>
-        <div class="tk-dl"><span class="lab">Notiz</span><br /><span class="val" id="d-note">—</span></div>
-      </div>
-      <div class="tk-modal-f tk-modal-f--split">
-        <button type="button" class="icon-btn" id="btn-delete-entry" style="color: var(--danger)" title="Eintrag löschen">
-          <i class="fa-solid fa-trash" aria-hidden="true"></i>
-        </button>
-        <div class="tk-modal-f__right">
-          <button type="button" class="btn-save" id="d-close">Schließen</button>
-        </div>
-      </div>
     </div>
   </div>
 
