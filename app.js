@@ -55,6 +55,7 @@ const els = {
   autosaveStatus: null,
   modalTitle: null,
   btnDeleteEntry: null,
+  btnDone: null,
   search: null,
   btnCreate: null,
   btnViewMonth: null,
@@ -78,6 +79,47 @@ function setAutosaveStatus(text, state = "") {
   if (!els.autosaveStatus) return;
   els.autosaveStatus.textContent = text;
   els.autosaveStatus.dataset.state = state;
+}
+
+function readFormPayload() {
+  const s = readYmdFromCombos("f-start") || (els.formStart && els.formStart.value) || "";
+  const e = readYmdFromCombos("f-end") || (els.formEnd && els.formEnd.value) || "";
+  return {
+    title: (els.formTitle && els.formTitle.value.trim()) || "",
+    type: els.formType.value,
+    start_date: s,
+    end_date: e,
+    note: els.formNote.value.trim() || null,
+  };
+}
+
+function isEntryReady() {
+  const { title, start_date, end_date } = readFormPayload();
+  return Boolean(title) && Boolean(start_date) && Boolean(end_date) && end_date >= start_date;
+}
+
+function updateDoneButton() {
+  if (!els.btnDone) return;
+  els.btnDone.disabled = !draftEventId;
+}
+
+function updateRangeSummary() {
+  if (!els.rangeSummary) return;
+  const s = readYmdFromCombos("f-start") || (els.formStart && els.formStart.value) || "";
+  const e = readYmdFromCombos("f-end") || (els.formEnd && els.formEnd.value) || "";
+  els.rangeSummary.classList.remove("is-invalid");
+  if (!s || !e) {
+    els.rangeSummary.textContent = "Start und Ende wählen";
+    return;
+  }
+  if (e < s) {
+    els.rangeSummary.textContent = "Ende liegt vor dem Start";
+    els.rangeSummary.classList.add("is-invalid");
+    return;
+  }
+  const days = countInclusiveDays(s, e);
+  const dayWord = days === 1 ? "Tag" : "Tage";
+  els.rangeSummary.textContent = `${formatYmdDe(s)} – ${formatYmdDe(e)} · ${days} ${dayWord}`;
 }
 
 function toYmd(d) {
@@ -109,23 +151,6 @@ function countInclusiveDays(startYmd, endYmd) {
   const a = new Date(startYmd + "T12:00:00");
   const b = new Date(endYmd + "T12:00:00");
   return Math.round((b - a) / 86400000) + 1;
-}
-
-function updateRangeSummary() {
-  if (!els.rangeSummary) return;
-  const s = readYmdFromCombos("f-start") || (els.formStart && els.formStart.value) || "";
-  const e = readYmdFromCombos("f-end") || (els.formEnd && els.formEnd.value) || "";
-  if (!s || !e) {
-    els.rangeSummary.textContent = "Start- und Enddatum wählen";
-    return;
-  }
-  if (e < s) {
-    els.rangeSummary.textContent = "Ende liegt vor dem Start";
-    return;
-  }
-  const days = countInclusiveDays(s, e);
-  const dayWord = days === 1 ? "Tag" : "Tage";
-  els.rangeSummary.textContent = `${formatYmdDe(s)} – ${formatYmdDe(e)} (${days} ${dayWord})`;
 }
 
 function setRangeFromToday() {
@@ -333,6 +358,7 @@ function closeModal(ov) {
   ov.setAttribute("aria-hidden", "true");
   draftEventId = null;
   setAutosaveStatus("");
+  updateDoneButton();
 }
 
 function setFormTypeValue(type) {
@@ -347,36 +373,21 @@ function setFormTypeValue(type) {
   }
 }
 
-function readFormPayload() {
-  const s = readYmdFromCombos("f-start") || (els.formStart && els.formStart.value) || "";
-  const e = readYmdFromCombos("f-end") || (els.formEnd && els.formEnd.value) || "";
-  return {
-    title: (els.formTitle && els.formTitle.value.trim()) || "",
-    type: els.formType.value,
-    start_date: s,
-    end_date: e,
-    note: els.formNote.value.trim() || null,
-  };
-}
-
 function scheduleAutosave() {
   clearTimeout(autosaveTimer);
-  autosaveTimer = setTimeout(() => persistEntry(), 650);
+  updateRangeSummary();
+  if (!isEntryReady()) {
+    updateDoneButton();
+    return;
+  }
+  autosaveTimer = setTimeout(() => persistEntry(), 700);
 }
 
 async function persistEntry() {
   if (!currentMemberId || autosaveBusy) return;
+  if (!isEntryReady()) return;
   const { title, type, start_date, end_date, note } = readFormPayload();
-  if (!title) {
-    setAutosaveStatus("Bezeichnung eingeben", "err");
-    return;
-  }
-  if (!start_date || !end_date || end_date < start_date) {
-    setAutosaveStatus("Zeitraum prüfen", "err");
-    return;
-  }
   autosaveBusy = true;
-  setAutosaveStatus("Speichert…", "busy");
   try {
     let row;
     if (draftEventId) {
@@ -396,11 +407,12 @@ async function persistEntry() {
     if (idx >= 0) dbRows[idx] = row;
     else dbRows.push(row);
     rebuildDbEvents();
+    updateDoneButton();
     setAutosaveStatus("Gespeichert", "ok");
   } catch (err) {
     console.error(err);
-    setAutosaveStatus("Speichern fehlgeschlagen", "err");
     toast(err.message || "Speichern fehlgeschlagen", "err");
+    setAutosaveStatus("Speichern fehlgeschlagen", "err");
   } finally {
     autosaveBusy = false;
   }
@@ -416,7 +428,7 @@ function openEntryModal(preset, editRow) {
     els.formMemberLabel.textContent = currentMemberName || "Dein Kalender";
   }
   if (els.modalTitle) {
-    els.modalTitle.textContent = editRow ? "Eintrag bearbeiten" : "Eintrag erstellen";
+    els.modalTitle.textContent = editRow ? "Eintrag bearbeiten" : "Neuer Eintrag";
   }
   if (els.btnDeleteEntry) {
     els.btnDeleteEntry.hidden = !editRow;
@@ -449,13 +461,14 @@ function openEntryModal(preset, editRow) {
   setCombosFromYmd("f-start", startYmd);
   setCombosFromYmd("f-end", endYmd);
   updateRangeSummary();
-  setAutosaveStatus(editRow ? "" : "Automatisches Speichern aktiv");
-  if (!editRow && els.formTitle) {
+  updateDoneButton();
+  setAutosaveStatus("");
+  if (els.formTitle) {
     requestAnimationFrame(() => els.formTitle.focus());
   }
   els.modalOvl.classList.add("is-open");
   els.modalOvl.setAttribute("aria-hidden", "false");
-  if (!editRow) scheduleAutosave();
+  if (editRow) scheduleAutosave();
 }
 
 function waitForRootsUser(maxMs = 20000) {
@@ -515,6 +528,7 @@ async function init() {
   els.autosaveStatus = document.getElementById("f-autosave-status");
   els.modalTitle = document.getElementById("m-title");
   els.btnDeleteEntry = document.getElementById("btn-delete-entry");
+  els.btnDone = document.getElementById("m-done");
   els.search = document.getElementById("header-search");
   els.btnCreate = document.getElementById("btn-new-entry");
   els.btnViewMonth = document.getElementById("view-month");
@@ -547,6 +561,12 @@ async function init() {
   if (els.formTitle) els.formTitle.addEventListener("input", scheduleAutosave);
   if (els.formNote) els.formNote.addEventListener("input", scheduleAutosave);
   if (els.btnFromToday) els.btnFromToday.addEventListener("click", setRangeFromToday);
+  if (els.btnDone) {
+    els.btnDone.addEventListener("click", () => {
+      if (!draftEventId) return;
+      closeModal(els.modalOvl);
+    });
+  }
 
   (function initDateCombos() {
     const yNow = new Date().getFullYear();
