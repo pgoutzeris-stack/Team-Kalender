@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/circular-std" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.10/main.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.10/main.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fullcalendar/multimonth@6.1.10/main.min.css" />
@@ -821,16 +821,16 @@
         </div>
         <div class="header-sep" aria-hidden="true"></div>
         <button type="button" class="btn-revision header-action-btn" id="btn-team" title="Team verwalten">
-          <i class="ri-group-line" aria-hidden="true"></i>
+          <i class="fa-solid fa-users" aria-hidden="true"></i>
           Team
         </button>
         <div class="header-sep" aria-hidden="true"></div>
         <span id="sync-badge" class="sync-badge offline" title="Abgleich per HTTP">
-          <i class="ri-cloud-line" aria-hidden="true"></i>
+          <i class="fa-solid fa-cloud" aria-hidden="true"></i>
           <span class="sync-label">Offline</span>
         </span>
         <button type="button" class="btn-save header-action-btn" id="btn-new-entry" title="Eintrag erstellen">
-          <i class="ri-add-line" aria-hidden="true"></i>
+          <i class="fa-solid fa-plus" aria-hidden="true"></i>
           Eintrag
         </button>
       </div>
@@ -874,7 +874,7 @@
             aria-label="Teammitglied wählen"
           >
             <span id="f-member-text">Teammitglied wählen</span>
-            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+            <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
           </button>
           <ul class="tk-select-menu" id="f-member-menu" role="listbox" hidden></ul>
           <div id="f-new-member-wrap" class="tk-new-member" hidden>
@@ -942,7 +942,7 @@
         <button type="button" class="btn-save" id="m-save">Speichern</button>
       </div>
       <button type="button" class="icon-btn tk-modal__corner-close" id="m-close" title="Schließen" aria-label="Dialog schließen">
-        <i class="ri-close-line" aria-hidden="true"></i>
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
       </button>
     </div>
   </div>
@@ -951,7 +951,7 @@
     <div class="tk-modal">
       <div class="tk-modal-h">
         <h2 class="tk-modal-t">Team</h2>
-        <button type="button" class="icon-btn" id="team-close-2" title="Schließen"><i class="ri-close-line" aria-hidden="true"></i></button>
+        <button type="button" class="icon-btn" id="team-close-2" title="Schließen"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       </div>
       <div class="tk-modal-b">
         <p class="field-sub">Gespeicherte Teammitglieder. Löschen nur möglich, wenn keine Kalendereinträge mehr dazu existieren.</p>
@@ -967,7 +967,7 @@
     <div class="tk-modal">
       <div class="tk-modal-h">
         <h2 class="tk-modal-t">Eintrag</h2>
-        <button type="button" class="icon-btn" id="d-close-2" title="Schließen"><i class="ri-close-line" aria-hidden="true"></i></button>
+        <button type="button" class="icon-btn" id="d-close-2" title="Schließen"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       </div>
       <div class="tk-modal-b" id="d-body">
         <div class="tk-dl"><span class="lab">Name</span><br /><span class="val" id="d-name">—</span></div>
@@ -977,7 +977,7 @@
       </div>
       <div class="tk-modal-f tk-modal-f--split">
         <button type="button" class="icon-btn" id="btn-delete-entry" style="color: var(--danger)" title="Eintrag löschen">
-          <i class="ri-delete-bin-line" aria-hidden="true"></i>
+          <i class="fa-solid fa-trash" aria-hidden="true"></i>
         </button>
         <div class="tk-modal-f__right">
           <button type="button" class="btn-save" id="d-close">Schließen</button>
