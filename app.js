@@ -38,9 +38,6 @@ let draftEventId = null;
 let autosaveTimer = null;
 let autosaveBusy = false;
 
-/** @type {Map<HTMLSelectElement, () => void>} */
-const tkSelectRefresh = new Map();
-
 const els = {
   cal: null,
   toast: null,
@@ -100,81 +97,6 @@ function ymdFromParts(y, m, d) {
   return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
-function refreshTkSelect(selectEl) {
-  const fn = tkSelectRefresh.get(selectEl);
-  if (fn) fn();
-}
-
-function mountTkSelect(selectEl) {
-  if (!selectEl || selectEl.dataset.tkMounted === "1") return;
-  selectEl.dataset.tkMounted = "1";
-  selectEl.classList.add("tk-select-native");
-
-  const wrap = document.createElement("div");
-  wrap.className = "tk-select";
-  selectEl.parentNode.insertBefore(wrap, selectEl);
-  wrap.appendChild(selectEl);
-
-  const trigger = document.createElement("button");
-  trigger.type = "button";
-  trigger.className = "tk-select-trigger";
-  trigger.setAttribute("aria-haspopup", "listbox");
-
-  const menu = document.createElement("ul");
-  menu.className = "tk-select-menu";
-  menu.setAttribute("role", "listbox");
-
-  function syncTrigger() {
-    const opt = selectEl.options[selectEl.selectedIndex];
-    trigger.innerHTML = `<span>${opt?.textContent || "—"}</span><i class="fa-solid fa-chevron-down" aria-hidden="true"></i>`;
-    menu.querySelectorAll(".tk-select-option").forEach((li) => {
-      li.setAttribute("aria-selected", li.dataset.value === selectEl.value ? "true" : "false");
-    });
-  }
-
-  function rebuildMenu() {
-    menu.innerHTML = "";
-    Array.from(selectEl.options).forEach((opt) => {
-      const li = document.createElement("li");
-      li.className = "tk-select-option";
-      li.dataset.value = opt.value;
-      li.setAttribute("role", "option");
-      li.textContent = opt.textContent;
-      li.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        selectEl.value = opt.value;
-        selectEl.dispatchEvent(new Event("change", { bubbles: true }));
-        wrap.classList.remove("is-menu-open");
-        syncTrigger();
-      });
-      menu.appendChild(li);
-    });
-    syncTrigger();
-  }
-
-  trigger.addEventListener("click", (ev) => {
-    ev.stopPropagation();
-    document.querySelectorAll(".tk-select.is-menu-open").forEach((w) => {
-      if (w !== wrap) w.classList.remove("is-menu-open");
-    });
-    wrap.classList.toggle("is-menu-open");
-  });
-
-  selectEl.addEventListener("change", syncTrigger);
-  wrap.appendChild(trigger);
-  wrap.appendChild(menu);
-  tkSelectRefresh.set(selectEl, rebuildMenu);
-  rebuildMenu();
-}
-
-function mountAllDateSelects() {
-  document.querySelectorAll("#modal-create select.tk-date-select").forEach(mountTkSelect);
-}
-
-function closeAllTkSelectMenus() {
-  document.querySelectorAll(".tk-select.is-menu-open").forEach((w) => w.classList.remove("is-menu-open"));
-}
-
 function formatYmdDe(ymd) {
   if (!ymd || ymd.length < 10) return "—";
   const d = new Date(ymd + "T12:00:00");
@@ -232,7 +154,6 @@ function fillDayOptions(dSel, y, m, prefer) {
     dSel.appendChild(o);
   }
   dSel.value = String(use);
-  refreshTkSelect(dSel);
   return use;
 }
 
@@ -247,7 +168,6 @@ function buildYearOptions(ySel, centerY) {
     o.textContent = String(y);
     ySel.appendChild(o);
   }
-  refreshTkSelect(ySel);
 }
 
 function buildMonthOptions(mSel) {
@@ -259,7 +179,6 @@ function buildMonthOptions(mSel) {
     o.textContent = MONTHS_DE[m - 1];
     mSel.appendChild(o);
   }
-  refreshTkSelect(mSel);
 }
 
 function readYmdFromCombos(idBase) {
@@ -294,9 +213,6 @@ function setCombosFromYmd(idBase, ymd) {
   mEl.value = String(m);
   fillDayOptions(dEl, y, m, d);
   if (hEl) hEl.value = ymdFromParts(y, m, parseInt(dEl.value, 10));
-  refreshTkSelect(dEl);
-  refreshTkSelect(mEl);
-  refreshTkSelect(yEl);
   updateRangeSummary();
 }
 
@@ -413,7 +329,6 @@ function applySearch() {
 }
 
 function closeModal(ov) {
-  closeAllTkSelectMenus();
   ov.classList.remove("is-open");
   ov.setAttribute("aria-hidden", "true");
   draftEventId = null;
@@ -630,10 +545,6 @@ async function init() {
   if (els.formNote) els.formNote.addEventListener("input", scheduleAutosave);
   if (els.btnFromToday) els.btnFromToday.addEventListener("click", setRangeFromToday);
 
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest(".tk-select")) closeAllTkSelectMenus();
-  });
-
   (function initDateCombos() {
     const yNow = new Date().getFullYear();
     buildYearOptions(document.getElementById("f-start-y"), yNow);
@@ -672,7 +583,6 @@ async function init() {
         if (el) el.addEventListener("change", () => handleDatePartChange(idBase));
       });
     });
-    mountAllDateSelects();
     updateRangeSummary();
   })();
 
