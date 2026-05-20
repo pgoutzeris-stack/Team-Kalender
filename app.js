@@ -116,16 +116,16 @@ function updateRangeSummary() {
   const s = readYmdFromCombos("f-start") || (els.formStart && els.formStart.value) || "";
   const e = readYmdFromCombos("f-end") || (els.formEnd && els.formEnd.value) || "";
   if (!s || !e) {
-    els.rangeSummary.textContent = "Bitte Start- und Enddatum wählen.";
+    els.rangeSummary.textContent = "Start- und Enddatum wählen";
     return;
   }
   if (e < s) {
-    els.rangeSummary.textContent = "Ende liegt vor dem Start — bitte korrigieren.";
+    els.rangeSummary.textContent = "Ende liegt vor dem Start";
     return;
   }
   const days = countInclusiveDays(s, e);
   const dayWord = days === 1 ? "Tag" : "Tage";
-  els.rangeSummary.textContent = `${formatYmdDe(s)} → ${formatYmdDe(e)} · ${days} ${dayWord}`;
+  els.rangeSummary.textContent = `${formatYmdDe(s)} – ${formatYmdDe(e)} (${days} ${dayWord})`;
 }
 
 function setRangeFromToday() {
@@ -340,7 +340,7 @@ function setFormTypeValue(type) {
   const t = type && Object.prototype.hasOwnProperty.call(TYPE_LABELS, type) ? type : "urlaub";
   els.formType.value = t;
   if (els.formTypeChips) {
-    els.formTypeChips.querySelectorAll(".tk-chip").forEach((btn) => {
+    els.formTypeChips.querySelectorAll(".entry-type-card").forEach((btn) => {
       const on = (btn.getAttribute("data-type") || "") === t;
       btn.setAttribute("aria-pressed", on ? "true" : "false");
     });
@@ -449,7 +449,10 @@ function openEntryModal(preset, editRow) {
   setCombosFromYmd("f-start", startYmd);
   setCombosFromYmd("f-end", endYmd);
   updateRangeSummary();
-  setAutosaveStatus(editRow ? "" : "Änderungen werden automatisch gespeichert");
+  setAutosaveStatus(editRow ? "" : "Automatisches Speichern aktiv");
+  if (!editRow && els.formTitle) {
+    requestAnimationFrame(() => els.formTitle.focus());
+  }
   els.modalOvl.classList.add("is-open");
   els.modalOvl.setAttribute("aria-hidden", "false");
   if (!editRow) scheduleAutosave();
@@ -522,7 +525,7 @@ async function init() {
 
   if (els.formTypeChips) {
     els.formTypeChips.addEventListener("click", (e) => {
-      const btn = e.target && e.target.closest(".tk-chip[data-type]");
+      const btn = e.target && e.target.closest(".entry-type-card[data-type]");
       if (!btn) return;
       setFormTypeValue(btn.getAttribute("data-type") || "urlaub");
       scheduleAutosave();
@@ -633,10 +636,6 @@ async function init() {
       multiMonthYear: { multiMonthMaxColumns: 3, multiMonthMinWidth: 200, dayMaxEvents: 3 },
     },
     buttonText: { today: "Heute" },
-    dayCellClassNames(arg) {
-      const ymd = toYmd(arg.date);
-      return nrwDateSet.has(ymd) ? ["tk-day-nrw"] : [];
-    },
     eventContent(arg) {
       return calendarEventContent(arg);
     },
