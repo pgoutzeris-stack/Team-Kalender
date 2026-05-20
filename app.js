@@ -220,13 +220,21 @@ function nrwRowsToFcEvents(rows) {
     title: h.label,
     start: h.holiday_date,
     allDay: true,
-    display: "background",
+    display: "auto",
     backgroundColor: TYPE_COLORS.nrw.bg,
-    borderColor: "#cbd5e1",
+    borderColor: "#94a3b8",
     textColor: TYPE_COLORS.nrw.fg,
     classNames: ["fc-event-nrw", "event-type-nrw"],
     extendedProps: { type: "nrw", source: "nrw", notiz: h.label },
   }));
+}
+
+function nrwEventContent(arg) {
+  if (arg.event.extendedProps?.source !== "nrw") return undefined;
+  const span = document.createElement("span");
+  span.className = "tk-nrw-tag";
+  span.textContent = arg.event.title || "Feiertag";
+  return { domNodes: [span] };
 }
 
 function applySearch() {
@@ -530,6 +538,9 @@ async function init() {
     dayCellClassNames(arg) {
       const ymd = toYmd(arg.date);
       return nrwDateSet.has(ymd) ? ["tk-day-nrw"] : [];
+    },
+    eventContent(arg) {
+      return nrwEventContent(arg);
     },
     eventClick(info) {
       info.jsEvent.preventDefault();

@@ -709,7 +709,7 @@
     .fc .fc-scroller-harness { border-radius: 12px; }
     .fc .fc-daygrid-day-frame { min-height: 3.1rem; }
     .fc .fc-daygrid-day-top { padding: 0.2rem 0.35rem; }
-    .fc .fc-daygrid-day-number { font-weight: 600; font-size: 0.8rem; color: var(--muted); }
+    .fc .fc-daygrid-day-number { font-weight: 600; font-size: 0.8rem; color: var(--ink); }
     .fc .fc-day-today .fc-daygrid-day-number { color: var(--brand); }
     .fc .fc-col-header-cell { background: var(--status-bg); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
     .fc .fc-h-event, .fc .fc-v-event { border: none; border-radius: 8px; padding: 2px 6px; font-weight: 600; font-size: 0.8rem; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15); }
@@ -782,7 +782,7 @@
     .fc .fc-multimonth .fc-daygrid-day-number {
       font-weight: 600;
       font-size: 0.8rem;
-      color: var(--muted);
+      color: var(--ink);
     }
     .fc .fc-multimonth .fc-day-today .fc-daygrid-day-number { color: var(--brand); }
     .fc .fc-multimonth .fc-col-header-cell,
@@ -803,8 +803,6 @@
     .fc .fc-button { border-radius: 10px; font-size: 0.84rem; font-weight: 600; }
     .fc .fc-today-button { color: var(--ink) !important; background: var(--status-bg) !important; border-color: var(--line) !important; }
     .fc .fc-today-button:hover { background: var(--line) !important; }
-    .event-type-nrw { display: none !important; }
-
     /* ===== ROOTS KALENDER FIXES ===== */
 
     /* Outline bei Prev/Next/Today-Buttons entfernen */
@@ -823,7 +821,7 @@
       --fc-page-bg-color: transparent;
     }
     .fc .fc-day-other { background: transparent !important; }
-    .fc .fc-day-other .fc-daygrid-day-top { opacity: 0.3; }
+    .fc .fc-day-other .fc-daygrid-day-top { opacity: 1; }
     .fc .fc-day-past .fc-daygrid-day-frame { background: transparent !important; }
     .fc-theme-standard .fc-scrollgrid-liquid { background: var(--bg); }
 
@@ -838,7 +836,7 @@
       justify-content: center !important;
       font-weight: 600 !important;
       font-size: 0.8rem !important;
-      color: var(--muted) !important;
+      color: var(--ink) !important;
       text-decoration: none !important;
       margin: 3px !important;
       padding: 0 !important;
@@ -878,7 +876,33 @@
       background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%);
     }
     .fc .fc-daygrid-day.tk-day-nrw .fc-daygrid-day-number { color: var(--ink); font-weight: 700; }
-    .fc-event-nrw, .event-type-nrw { font-size: 0.72rem; font-weight: 600; }
+    .fc-event-nrw, .event-type-nrw {
+      font-size: 0.68rem;
+      font-weight: 600;
+      border: 1px solid #cbd5e1 !important;
+      box-shadow: none !important;
+      cursor: default;
+    }
+    .fc-event-nrw .fc-event-main,
+    .event-type-nrw .fc-event-main { padding: 0 1px; }
+    .tk-nrw-tag {
+      display: inline-block;
+      max-width: 100%;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: #e2e8f0;
+      color: #334155;
+      font-size: 0.68rem;
+      font-weight: 600;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .fc .fc-multimonth .tk-nrw-tag {
+      font-size: 0.58rem;
+      padding: 0 3px;
+    }
     .tk-legend {
       display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem 1.25rem;
       margin-top: 1.25rem; padding: 1rem 1.25rem;
