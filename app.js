@@ -522,11 +522,16 @@ function openEntryModal(preset, editRow) {
   }
 }
 
+function isRootsProfileReady() {
+  const ru = window.RootsUser;
+  return Boolean(ru?._uid && ru?._p && ru._p.id === ru._uid);
+}
+
 function waitForRootsUser(maxMs = 20000) {
   return new Promise((resolve) => {
     const t0 = Date.now();
     const tick = () => {
-      if (window.RootsUser?._uid && window.RootsUser?._p) resolve(window.RootsUser);
+      if (isRootsProfileReady()) resolve(window.RootsUser);
       else if (Date.now() - t0 > maxMs) resolve(null);
       else setTimeout(tick, 120);
     };
@@ -536,11 +541,16 @@ function waitForRootsUser(maxMs = 20000) {
 
 async function resolveCurrentMember() {
   const ru = await waitForRootsUser();
-  if (!ru?._uid) throw new Error("Nicht angemeldet");
+  if (!ru?._uid || !ru._p || ru._p.id !== ru._uid) {
+    currentMemberId = null;
+    currentMemberName = "";
+    throw new Error("Nicht angemeldet");
+  }
   const name = (ru._p.full_name || ru._p.email || "Nutzer").trim();
   const m = await ensureMemberForUser(ru._uid, name);
   currentMemberId = m.id;
-  currentMemberName = m.name || name;
+  currentMemberName = name;
+  updateSonstigesFieldVisibility();
 }
 
 function rebuildDbEvents() {
@@ -802,6 +812,13 @@ async function init() {
   }
 
   els.search.addEventListener("input", applySearch);
+
+  document.addEventListener("roots-profile-ready", () => {
+    resolveCurrentMember().catch((e) => {
+      console.error(e);
+      toast(e.message || "Profil konnte nicht geladen werden", "err");
+    });
+  });
 }
 
 document.addEventListener("DOMContentLoaded", init);

@@ -1396,13 +1396,24 @@
     if(vForgot)vForgot.style.display='none';
     resetLoginUi();
   }
+  function onSessionReady(session){
+    if(session){
+      hideAuthOverlay();
+      window.RootsUser._loadAndMount(sb).then(()=>{
+        document.dispatchEvent(new CustomEvent('roots-profile-ready'));
+      });
+    }
+  }
   sb.auth.getSession().then(({data:{session}})=>{
-    if(session){hideAuthOverlay();window.RootsUser._loadAndMount(sb);}
+    if(session)onSessionReady(session);
     else{resetLoginUi();}
   });
   sb.auth.onAuthStateChange((event,session)=>{
-    if(session){hideAuthOverlay();window.RootsUser._loadAndMount(sb);}
-    else if(event==='SIGNED_OUT'){showAuthOverlay();}
+    if(session)onSessionReady(session);
+    else if(event==='SIGNED_OUT'){
+      showAuthOverlay();
+      if(window.RootsUser){window.RootsUser._uid=null;window.RootsUser._p=null;}
+    }
   });
   document.getElementById('roots-login-form').addEventListener('submit',async(e)=>{
     e.preventDefault();
@@ -1469,8 +1480,9 @@ window.RootsUser = window.RootsUser || {
   async _loadAndMount(sb){
     this._sb=sb;
     const{data:{session}}=await sb.auth.getSession();
-    if(!session)return;
+    if(!session){this._uid=null;this._p=null;return;}
     this._uid=session.user.id;
+    this._p=null;
     const{data}=await sb.schema('users').from('profiles').select('id,email,full_name,position,avatar_url,linkedin_url,app_role').eq('id',this._uid).single();
     this._p=data||{id:this._uid,email:session.user.email,app_role:'reader'};
     this._mount();
@@ -1510,7 +1522,7 @@ window.RootsUser = window.RootsUser || {
     if(!error&&email&&email!==this._p.email)await this._sb.auth.updateUser({email});
     btn.disabled=false;btn.textContent='Speichern';
     if(error){msg.style.cssText='display:block;color:#dc2626;font-size:.85rem;text-align:center;margin-top:.5rem';msg.textContent='Fehler beim Speichern.';}
-    else{Object.assign(this._p,{full_name:name,position:pos,linkedin_url:li,avatar_url:av});if(email!==this._p.email)this._p.email=email;msg.style.cssText='display:block;color:#10b981;font-size:.85rem;text-align:center;margin-top:.5rem';msg.textContent='✓ Gespeichert!';this._mount();setTimeout(()=>this.closeSettings(),700);}
+    else{Object.assign(this._p,{full_name:name,position:pos,linkedin_url:li,avatar_url:av});if(email!==this._p.email)this._p.email=email;msg.style.cssText='display:block;color:#10b981;font-size:.85rem;text-align:center;margin-top:.5rem';msg.textContent='✓ Gespeichert!';this._mount();document.dispatchEvent(new CustomEvent('roots-profile-ready'));setTimeout(()=>this.closeSettings(),700);}
   }
 };
 </script>

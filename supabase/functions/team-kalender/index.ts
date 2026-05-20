@@ -173,16 +173,19 @@ Deno.serve(async (req) => {
             headers: { ...c, "Content-Type": "application/json" },
           });
         }
-        const { data: byName } = await supa
+        // Nur unverknüpfte Legacy-Zeilen (user_id NULL) übernehmen — nie fremde Konten umbiegen
+        const { data: orphan } = await supa
           .from("team_members")
           .select("id,name,user_id,created_at")
           .eq("name", name)
+          .is("user_id", null)
           .maybeSingle();
-        if (byName) {
+        if (orphan) {
           const { data: linked, error: lErr } = await supa
             .from("team_members")
-            .update({ user_id })
-            .eq("id", byName.id)
+            .update({ user_id, name })
+            .eq("id", orphan.id)
+            .is("user_id", null)
             .select("id,name,user_id,created_at")
             .single();
           if (lErr) throw lErr;
@@ -191,11 +194,20 @@ Deno.serve(async (req) => {
             headers: { ...c, "Content-Type": "application/json" },
           });
         }
-        const { data, error } = await supa
+        let insertName = name;
+        let { data, error } = await supa
           .from("team_members")
-          .insert({ name, user_id })
+          .insert({ name: insertName, user_id })
           .select("id,name,user_id,created_at")
           .single();
+        if (error?.code === "23505") {
+          insertName = `${name} (${user_id.slice(0, 8)})`;
+          ({ data, error } = await supa
+            .from("team_members")
+            .insert({ name: insertName, user_id })
+            .select("id,name,user_id,created_at")
+            .single());
+        }
         if (error) throw error;
         return new Response(JSON.stringify(data), {
           status: 201,
