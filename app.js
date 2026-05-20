@@ -642,12 +642,7 @@ async function init() {
       year: "Jahr",
     },
     customButtons: {},
-    eventSources: [
-      {
-        id: nrwSourceId,
-        events: nrwEvents,
-      },
-    ],
+    eventSources: [],
     eventClick(info) {
       info.jsEvent.preventDefault();
       openDetailFromEvent(info.event);

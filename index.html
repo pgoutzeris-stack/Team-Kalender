@@ -789,7 +789,76 @@
     .fc .fc-button { border-radius: 10px; font-size: 0.84rem; font-weight: 600; }
     .fc .fc-today-button { color: var(--ink) !important; background: var(--status-bg) !important; border-color: var(--line) !important; }
     .fc .fc-today-button:hover { background: var(--line) !important; }
-    .event-type-nrw { opacity: 0.95; font-size: 0.8em; }
+    .event-type-nrw { display: none !important; }
+
+    /* ===== ROOTS KALENDER FIXES ===== */
+
+    /* Outline bei Prev/Next/Today-Buttons entfernen */
+    .fc .fc-button:focus,
+    .fc .fc-button:focus-visible,
+    .fc .fc-button-primary:focus,
+    .fc .fc-button-primary:focus-visible {
+      outline: none !important;
+      box-shadow: none !important;
+    }
+
+    /* Graue Einfärbung entfernen: andere-Monat-Tage, vergangene Tage, Wochenenden */
+    .fc {
+      --fc-neutral-bg-color: transparent;
+      --fc-neutral-text-color: var(--muted);
+      --fc-page-bg-color: transparent;
+    }
+    .fc .fc-day-other { background: transparent !important; }
+    .fc .fc-day-other .fc-daygrid-day-top { opacity: 0.3; }
+    .fc .fc-day-past .fc-daygrid-day-frame { background: transparent !important; }
+    .fc-theme-standard .fc-scrollgrid-liquid { background: var(--bg); }
+
+    /* Einheitliche runde Tages-Nummern in allen Ansichten */
+    .fc .fc-daygrid-day-top { flex-direction: row; }
+    .fc .fc-daygrid-day-number {
+      width: 26px !important;
+      height: 26px !important;
+      border-radius: 50% !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      font-weight: 600 !important;
+      font-size: 0.8rem !important;
+      color: var(--muted) !important;
+      text-decoration: none !important;
+      margin: 3px !important;
+      padding: 0 !important;
+      line-height: 1 !important;
+      transition: background 0.12s, color 0.12s;
+    }
+    .fc .fc-day-today .fc-daygrid-day-number {
+      background: var(--brand) !important;
+      color: #fff !important;
+    }
+    .fc td.fc-daygrid-day:not(.fc-day-today):hover .fc-daygrid-day-number {
+      background: var(--brand-light) !important;
+      color: var(--brand) !important;
+    }
+    /* Jahresansicht: kompaktere Chips */
+    .fc .fc-multimonth .fc-daygrid-day-number {
+      width: 22px !important;
+      height: 22px !important;
+      font-size: 0.72rem !important;
+      margin: 2px !important;
+    }
+    /* Wochentag-Header einheitlich */
+    .fc .fc-col-header-cell-cushion {
+      text-decoration: none !important;
+      font-size: 0.72rem !important;
+      font-weight: 700 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.05em !important;
+      color: var(--muted) !important;
+      padding: 0.45rem 0.35rem !important;
+    }
+    /* Sanfter Übergang beim Auth-Overlay */
+    #roots-auth-overlay { transition: opacity 0.2s ease; }
+
     @media (prefers-color-scheme: dark) {
       .tk-select-trigger, .tk-select-menu { box-shadow: 0 1px 0 rgba(0,0,0,0.2); }
     }
@@ -1107,10 +1176,10 @@
   const vLogin=document.getElementById('roots-view-login');
   const vForgot=document.getElementById('roots-view-forgot');
   sb.auth.getSession().then(({data:{session}})=>{
-    if(session){overlay.style.display='none';window.RootsUser._loadAndMount(sb);}
+    if(session){overlay.style.opacity='0';overlay.style.pointerEvents='none';setTimeout(()=>overlay.style.display='none',210);window.RootsUser._loadAndMount(sb);}
   });
   sb.auth.onAuthStateChange((event,session)=>{
-    if(session){overlay.style.display='none';window.RootsUser._loadAndMount(sb);}
+    if(session){overlay.style.opacity='0';overlay.style.pointerEvents='none';setTimeout(()=>overlay.style.display='none',210);window.RootsUser._loadAndMount(sb);}
     else if(event==='SIGNED_OUT'){overlay.style.display='flex';vLogin.style.display='block';vForgot.style.display='none';}
   });
   document.getElementById('roots-login-form').addEventListener('submit',async(e)=>{
