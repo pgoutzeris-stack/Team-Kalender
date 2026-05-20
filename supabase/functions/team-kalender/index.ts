@@ -61,6 +61,7 @@ type EventRow = {
   id: string;
   member_id: string;
   type: string;
+  title: string | null;
   start_date: string;
   end_date: string;
   note: string | null;
@@ -114,7 +115,7 @@ Deno.serve(async (req) => {
 
       const { data, error } = await supa
         .from("events")
-        .select("id,member_id,type,start_date,end_date,note,created_at,team_members(name)")
+        .select("id,member_id,type,title,start_date,end_date,note,created_at,team_members(name)")
         .order("start_date", { ascending: true });
       if (error) throw error;
       const rows = (data ?? []) as EventRow[];
@@ -122,6 +123,7 @@ Deno.serve(async (req) => {
         id: e.id,
         member_id: e.member_id,
         type: e.type,
+        title: e.title,
         start_date: e.start_date,
         end_date: e.end_date,
         note: e.note,
@@ -206,6 +208,7 @@ Deno.serve(async (req) => {
         const type = String(body.type ?? "");
         const start_date = String(body.start_date ?? "");
         const end_date = String(body.end_date ?? "");
+        const title = String(body.title ?? "").trim();
         const note =
           body.note == null || body.note === "" ? null : String(body.note);
         if (!id || !start_date || !end_date) {
@@ -213,6 +216,12 @@ Deno.serve(async (req) => {
             JSON.stringify({ error: "id, start_date, end_date erforderlich" }),
             { status: 400, headers: { ...c, "Content-Type": "application/json" } },
           );
+        }
+        if (title.length < 1) {
+          return new Response(JSON.stringify({ error: "title erforderlich" }), {
+            status: 400,
+            headers: { ...c, "Content-Type": "application/json" },
+          });
         }
         const allowed = ["urlaub", "krank", "dienstreise", "sonstiges"];
         if (!allowed.includes(type)) {
@@ -223,9 +232,9 @@ Deno.serve(async (req) => {
         }
         const { data, error } = await supa
           .from("events")
-          .update({ type, start_date, end_date, note })
+          .update({ type, title, start_date, end_date, note })
           .eq("id", id)
-          .select("id,member_id,type,start_date,end_date,note,created_at,team_members(name)")
+          .select("id,member_id,type,title,start_date,end_date,note,created_at,team_members(name)")
           .single();
         if (error) throw error;
         const e = data as EventRow;
@@ -233,6 +242,7 @@ Deno.serve(async (req) => {
           id: e.id,
           member_id: e.member_id,
           type: e.type,
+          title: e.title,
           start_date: e.start_date,
           end_date: e.end_date,
           note: e.note,
@@ -278,6 +288,7 @@ Deno.serve(async (req) => {
 
       const member_id = String(body.member_id ?? "").trim();
       const type = String(body.type ?? "");
+      const title = String(body.title ?? "").trim();
       const start_date = String(body.start_date ?? "");
       const end_date = String(body.end_date ?? "");
       const note =
@@ -288,6 +299,12 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...c, "Content-Type": "application/json" } },
         );
       }
+      if (title.length < 1) {
+        return new Response(JSON.stringify({ error: "title erforderlich" }), {
+          status: 400,
+          headers: { ...c, "Content-Type": "application/json" },
+        });
+      }
       const allowed = ["urlaub", "krank", "dienstreise", "sonstiges"];
       if (!allowed.includes(type)) {
         return new Response(JSON.stringify({ error: "Ungültiger Ereignistyp" }), {
@@ -297,8 +314,8 @@ Deno.serve(async (req) => {
       }
       const { data, error } = await supa
         .from("events")
-        .insert({ member_id, type, start_date, end_date, note })
-        .select("id,member_id,type,start_date,end_date,note,created_at,team_members(name)")
+        .insert({ member_id, type, title, start_date, end_date, note })
+        .select("id,member_id,type,title,start_date,end_date,note,created_at,team_members(name)")
         .single();
       if (error) throw error;
       const e = data as EventRow;
@@ -306,6 +323,7 @@ Deno.serve(async (req) => {
         id: e.id,
         member_id: e.member_id,
         type: e.type,
+        title: e.title,
         start_date: e.start_date,
         end_date: e.end_date,
         note: e.note,

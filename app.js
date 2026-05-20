@@ -38,6 +38,9 @@ let draftEventId = null;
 let autosaveTimer = null;
 let autosaveBusy = false;
 
+/** @type {Map<HTMLSelectElement, () => void>} */
+const tkSelectRefresh = new Map();
+
 const els = {
   cal: null,
   toast: null,
@@ -46,8 +49,11 @@ const els = {
   formTypeChips: null,
   formStart: null,
   formEnd: null,
+  formTitle: null,
   formNote: null,
   datePresets: null,
+  btnFromToday: null,
+  rangeSummary: null,
   formMemberLabel: null,
   autosaveStatus: null,
   modalTitle: null,
@@ -94,6 +100,125 @@ function ymdFromParts(y, m, d) {
   return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
+function refreshTkSelect(selectEl) {
+  const fn = tkSelectRefresh.get(selectEl);
+  if (fn) fn();
+}
+
+function mountTkSelect(selectEl) {
+  if (!selectEl || selectEl.dataset.tkMounted === "1") return;
+  selectEl.dataset.tkMounted = "1";
+  selectEl.classList.add("tk-select-native");
+
+  const wrap = document.createElement("div");
+  wrap.className = "tk-select";
+  selectEl.parentNode.insertBefore(wrap, selectEl);
+  wrap.appendChild(selectEl);
+
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "tk-select-trigger";
+  trigger.setAttribute("aria-haspopup", "listbox");
+
+  const menu = document.createElement("ul");
+  menu.className = "tk-select-menu";
+  menu.setAttribute("role", "listbox");
+
+  function syncTrigger() {
+    const opt = selectEl.options[selectEl.selectedIndex];
+    trigger.innerHTML = `<span>${opt?.textContent || "—"}</span><i class="fa-solid fa-chevron-down" aria-hidden="true"></i>`;
+    menu.querySelectorAll(".tk-select-option").forEach((li) => {
+      li.setAttribute("aria-selected", li.dataset.value === selectEl.value ? "true" : "false");
+    });
+  }
+
+  function rebuildMenu() {
+    menu.innerHTML = "";
+    Array.from(selectEl.options).forEach((opt) => {
+      const li = document.createElement("li");
+      li.className = "tk-select-option";
+      li.dataset.value = opt.value;
+      li.setAttribute("role", "option");
+      li.textContent = opt.textContent;
+      li.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        selectEl.value = opt.value;
+        selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+        wrap.classList.remove("is-menu-open");
+        syncTrigger();
+      });
+      menu.appendChild(li);
+    });
+    syncTrigger();
+  }
+
+  trigger.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    document.querySelectorAll(".tk-select.is-menu-open").forEach((w) => {
+      if (w !== wrap) w.classList.remove("is-menu-open");
+    });
+    wrap.classList.toggle("is-menu-open");
+  });
+
+  selectEl.addEventListener("change", syncTrigger);
+  wrap.appendChild(trigger);
+  wrap.appendChild(menu);
+  tkSelectRefresh.set(selectEl, rebuildMenu);
+  rebuildMenu();
+}
+
+function mountAllDateSelects() {
+  document.querySelectorAll("#modal-create select.tk-date-select").forEach(mountTkSelect);
+}
+
+function closeAllTkSelectMenus() {
+  document.querySelectorAll(".tk-select.is-menu-open").forEach((w) => w.classList.remove("is-menu-open"));
+}
+
+function formatYmdDe(ymd) {
+  if (!ymd || ymd.length < 10) return "—";
+  const d = new Date(ymd + "T12:00:00");
+  if (Number.isNaN(d.getTime())) return ymd;
+  return d.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+}
+
+function countInclusiveDays(startYmd, endYmd) {
+  if (!startYmd || !endYmd || endYmd < startYmd) return 0;
+  const a = new Date(startYmd + "T12:00:00");
+  const b = new Date(endYmd + "T12:00:00");
+  return Math.round((b - a) / 86400000) + 1;
+}
+
+function updateRangeSummary() {
+  if (!els.rangeSummary) return;
+  const s = readYmdFromCombos("f-start") || (els.formStart && els.formStart.value) || "";
+  const e = readYmdFromCombos("f-end") || (els.formEnd && els.formEnd.value) || "";
+  if (!s || !e) {
+    els.rangeSummary.textContent = "Bitte Start- und Enddatum wählen.";
+    return;
+  }
+  if (e < s) {
+    els.rangeSummary.textContent = "Ende liegt vor dem Start — bitte korrigieren.";
+    return;
+  }
+  const days = countInclusiveDays(s, e);
+  const dayWord = days === 1 ? "Tag" : "Tage";
+  els.rangeSummary.textContent = `${formatYmdDe(s)} → ${formatYmdDe(e)} · ${days} ${dayWord}`;
+}
+
+function setRangeFromToday() {
+  const today = toYmd(new Date());
+  if (els.formStart) els.formStart.value = today;
+  setCombosFromYmd("f-start", today);
+  if (els.formEnd) {
+    const end = els.formEnd.value && els.formEnd.value >= today ? els.formEnd.value : today;
+    els.formEnd.value = end;
+    setCombosFromYmd("f-end", end);
+  }
+  updateRangeSummary();
+  scheduleAutosave();
+}
+
 function fillDayOptions(dSel, y, m, prefer) {
   if (!dSel) return 1;
   const maxD = daysInMonth(y, m);
@@ -107,6 +232,7 @@ function fillDayOptions(dSel, y, m, prefer) {
     dSel.appendChild(o);
   }
   dSel.value = String(use);
+  refreshTkSelect(dSel);
   return use;
 }
 
@@ -121,6 +247,7 @@ function buildYearOptions(ySel, centerY) {
     o.textContent = String(y);
     ySel.appendChild(o);
   }
+  refreshTkSelect(ySel);
 }
 
 function buildMonthOptions(mSel) {
@@ -132,6 +259,7 @@ function buildMonthOptions(mSel) {
     o.textContent = MONTHS_DE[m - 1];
     mSel.appendChild(o);
   }
+  refreshTkSelect(mSel);
 }
 
 function readYmdFromCombos(idBase) {
@@ -166,6 +294,10 @@ function setCombosFromYmd(idBase, ymd) {
   mEl.value = String(m);
   fillDayOptions(dEl, y, m, d);
   if (hEl) hEl.value = ymdFromParts(y, m, parseInt(dEl.value, 10));
+  refreshTkSelect(dEl);
+  refreshTkSelect(mEl);
+  refreshTkSelect(yEl);
+  updateRangeSummary();
 }
 
 function ymdAddDays(ymd, n) {
@@ -188,25 +320,36 @@ function inclusiveEndToFcEndYmd(ymd) {
   return toYmd(d);
 }
 
+function entryDisplayTitle(row) {
+  const custom = (row.title || "").trim();
+  if (custom) return custom;
+  const n = row.member_name || currentMemberName || "—";
+  const t = row.type === "homeoffice" ? "sonstiges" : row.type;
+  return `${n} · ${TYPE_LABELS[t] || t}`;
+}
+
 function rowToFcEvent(row) {
   const t = row.type === "homeoffice" ? "sonstiges" : row.type;
   const col = TYPE_COLORS[t] || TYPE_COLORS.sonstiges;
   const n = row.member_name || currentMemberName || "—";
+  const displayTitle = entryDisplayTitle(row);
   return {
     id: `db-${row.id}`,
-    title: `${n} · ${TYPE_LABELS[t] || t}`,
+    title: displayTitle,
     start: row.start_date,
     end: inclusiveEndToFcEndYmd(row.end_date),
     allDay: true,
     backgroundColor: col.bg,
     borderColor: col.bg,
     textColor: col.fg,
+    classNames: ["fc-event-entry", `event-type-${t}`],
     extendedProps: {
       source: "db",
       rowId: row.id,
       memberId: row.member_id,
       type: t,
       name: n,
+      entryTitle: (row.title || "").trim(),
       note: row.note || "",
       startD: row.start_date,
       endD: row.end_date,
@@ -237,19 +380,40 @@ function nrwEventContent(arg) {
   return { domNodes: [span] };
 }
 
+function entryEventContent(arg) {
+  if (arg.event.extendedProps?.source !== "db") return undefined;
+  const span = document.createElement("span");
+  span.className = "tk-entry-tag";
+  span.textContent = arg.event.title || "Eintrag";
+  return { domNodes: [span] };
+}
+
+function calendarEventContent(arg) {
+  return nrwEventContent(arg) || entryEventContent(arg);
+}
+
 function applySearch() {
   if (!calendar) return;
   const q = (els.search.value || "").trim().toLowerCase();
   searchQuery = q;
   calendar.getEvents().forEach((e) => {
     if (e.id && String(e.id).startsWith("nrw-")) return;
-    const name = (e.extendedProps.name || e.title || "").toLowerCase();
-    const vis = !q || name.includes(q);
+    const hay = [
+      e.extendedProps.entryTitle,
+      e.extendedProps.name,
+      e.title,
+      e.extendedProps.note,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    const vis = !q || hay.includes(q);
     e.setProp("display", vis ? "auto" : "none");
   });
 }
 
 function closeModal(ov) {
+  closeAllTkSelectMenus();
   ov.classList.remove("is-open");
   ov.setAttribute("aria-hidden", "true");
   draftEventId = null;
@@ -272,6 +436,7 @@ function readFormPayload() {
   const s = readYmdFromCombos("f-start") || (els.formStart && els.formStart.value) || "";
   const e = readYmdFromCombos("f-end") || (els.formEnd && els.formEnd.value) || "";
   return {
+    title: (els.formTitle && els.formTitle.value.trim()) || "",
     type: els.formType.value,
     start_date: s,
     end_date: e,
@@ -286,7 +451,11 @@ function scheduleAutosave() {
 
 async function persistEntry() {
   if (!currentMemberId || autosaveBusy) return;
-  const { type, start_date, end_date, note } = readFormPayload();
+  const { title, type, start_date, end_date, note } = readFormPayload();
+  if (!title) {
+    setAutosaveStatus("Bezeichnung eingeben", "err");
+    return;
+  }
   if (!start_date || !end_date || end_date < start_date) {
     setAutosaveStatus("Zeitraum prüfen", "err");
     return;
@@ -296,10 +465,11 @@ async function persistEntry() {
   try {
     let row;
     if (draftEventId) {
-      row = await updateEvent(draftEventId, { type, start_date, end_date, note });
+      row = await updateEvent(draftEventId, { title, type, start_date, end_date, note });
     } else {
       row = await insertEvent({
         member_id: currentMemberId,
+        title,
         type,
         start_date,
         end_date,
@@ -337,6 +507,11 @@ function openEntryModal(preset, editRow) {
     els.btnDeleteEntry.hidden = !editRow;
   }
   setFormTypeValue(editRow ? editRow.type : "urlaub");
+  if (els.formTitle) {
+    els.formTitle.value = editRow
+      ? (editRow.title || "").trim() || entryDisplayTitle(editRow)
+      : "";
+  }
   els.formNote.value = editRow ? editRow.note || "" : "";
 
   let startYmd = toYmd(new Date());
@@ -358,6 +533,7 @@ function openEntryModal(preset, editRow) {
   els.formEnd.value = endYmd;
   setCombosFromYmd("f-start", startYmd);
   setCombosFromYmd("f-end", endYmd);
+  updateRangeSummary();
   setAutosaveStatus(editRow ? "" : "Änderungen werden automatisch gespeichert");
   els.modalOvl.classList.add("is-open");
   els.modalOvl.setAttribute("aria-hidden", "false");
@@ -412,8 +588,11 @@ async function init() {
   els.formTypeChips = document.getElementById("f-type-chips");
   els.formStart = document.getElementById("f-start");
   els.formEnd = document.getElementById("f-end");
+  els.formTitle = document.getElementById("f-title");
   els.formNote = document.getElementById("f-note");
   els.datePresets = document.getElementById("f-date-presets");
+  els.btnFromToday = document.getElementById("f-from-today");
+  els.rangeSummary = document.getElementById("f-range-summary");
   els.formMemberLabel = document.getElementById("f-member-label");
   els.autosaveStatus = document.getElementById("f-autosave-status");
   els.modalTitle = document.getElementById("m-title");
@@ -447,7 +626,13 @@ async function init() {
       scheduleAutosave();
     });
   }
+  if (els.formTitle) els.formTitle.addEventListener("input", scheduleAutosave);
   if (els.formNote) els.formNote.addEventListener("input", scheduleAutosave);
+  if (els.btnFromToday) els.btnFromToday.addEventListener("click", setRangeFromToday);
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".tk-select")) closeAllTkSelectMenus();
+  });
 
   (function initDateCombos() {
     const yNow = new Date().getFullYear();
@@ -478,6 +663,7 @@ async function init() {
         els.formEnd.value = els.formStart.value;
         setCombosFromYmd("f-end", els.formEnd.value);
       }
+      updateRangeSummary();
       scheduleAutosave();
     }
     ["f-start", "f-end"].forEach((idBase) => {
@@ -486,6 +672,8 @@ async function init() {
         if (el) el.addEventListener("change", () => handleDatePartChange(idBase));
       });
     });
+    mountAllDateSelects();
+    updateRangeSummary();
   })();
 
   if (!TEAM_KALENDER_API_URL || TEAM_KALENDER_API_URL.includes("<")) {
@@ -528,11 +716,11 @@ async function init() {
     selectable: true,
     selectMirror: true,
     unselectAuto: true,
-    dayMaxEvents: 4,
+    dayMaxEvents: 6,
     weekNumbers: false,
     views: {
-      dayGridWeek: { dayMaxEvents: 5 },
-      multiMonthYear: { multiMonthMaxColumns: 3, multiMonthMinWidth: 200 },
+      dayGridWeek: { dayMaxEvents: 8 },
+      multiMonthYear: { multiMonthMaxColumns: 3, multiMonthMinWidth: 200, dayMaxEvents: 3 },
     },
     buttonText: { today: "Heute" },
     dayCellClassNames(arg) {
@@ -540,7 +728,7 @@ async function init() {
       return nrwDateSet.has(ymd) ? ["tk-day-nrw"] : [];
     },
     eventContent(arg) {
-      return nrwEventContent(arg);
+      return calendarEventContent(arg);
     },
     eventClick(info) {
       info.jsEvent.preventDefault();
