@@ -50,9 +50,6 @@ const els = {
   formSonstigesSuffix: null,
   formNamePrefix: null,
   formNote: null,
-  datePresets: null,
-  btnFromToday: null,
-  rangeSummary: null,
   autosaveStatus: null,
   modalTitle: null,
   btnDeleteEntry: null,
@@ -216,23 +213,8 @@ function updateDoneButton() {
   els.btnDone.textContent = draftEventId ? "Speichern" : "Hinzufügen";
 }
 
-function updateRangeSummary() {
-  if (!els.rangeSummary) return;
-  const s = (els.formStart && els.formStart.value) || "";
-  const e = (els.formEnd && els.formEnd.value) || "";
-  els.rangeSummary.classList.remove("is-invalid");
-  if (!s || !e) {
-    els.rangeSummary.textContent = "Start und Ende wählen";
-    return;
-  }
-  if (e < s) {
-    els.rangeSummary.textContent = "Ende liegt vor dem Start";
-    els.rangeSummary.classList.add("is-invalid");
-    return;
-  }
-  const days = countInclusiveDays(s, e);
-  const dayWord = days === 1 ? "Tag" : "Tage";
-  els.rangeSummary.textContent = `${formatYmdDe(s)} – ${formatYmdDe(e)} · ${days} ${dayWord}`;
+function refreshFormState() {
+  updateDoneButton();
 }
 
 function toYmd(d) {
@@ -242,16 +224,6 @@ function toYmd(d) {
   return `${y}-${m}-${day}`;
 }
 
-const MONTHS_DE = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
-
-function daysInMonth(y, m) {
-  return new Date(y, m, 0).getDate();
-}
-
-function ymdFromParts(y, m, d) {
-  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-}
-
 function formatYmdDe(ymd) {
   if (!ymd || ymd.length < 10) return "—";
   const d = new Date(ymd + "T12:00:00");
@@ -259,34 +231,12 @@ function formatYmdDe(ymd) {
   return d.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 }
 
-function countInclusiveDays(startYmd, endYmd) {
-  if (!startYmd || !endYmd || endYmd < startYmd) return 0;
-  const a = new Date(startYmd + "T12:00:00");
-  const b = new Date(endYmd + "T12:00:00");
-  return Math.round((b - a) / 86400000) + 1;
-}
-
-function setRangeFromToday() {
+function setDefaultDateRange(startYmd, endYmd) {
   const today = toYmd(new Date());
-  if (els.formStart) els.formStart.value = today;
-  if (els.formEnd) {
-    const end = els.formEnd.value && els.formEnd.value >= today ? els.formEnd.value : today;
-    els.formEnd.value = end;
-  }
-  refreshFormState();
-}
-
-function ymdAddDays(ymd, n) {
-  const d = new Date(ymd + "T12:00:00");
-  d.setDate(d.getDate() + n);
-  return toYmd(d);
-}
-
-function setEndFromInclusiveDuration(ymd, inclusiveDays) {
-  if (!ymd || !els.formEnd) return;
-  const days = Math.max(1, Math.floor(inclusiveDays));
-  els.formEnd.value = ymdAddDays(ymd, days - 1);
-  refreshFormState();
+  const start = startYmd || today;
+  const end = endYmd || start;
+  if (els.formStart) els.formStart.value = start;
+  if (els.formEnd) els.formEnd.value = end;
 }
 
 function inclusiveEndToFcEndYmd(ymd) {
@@ -395,11 +345,6 @@ function closeModal(ov) {
   if (els.entryFormMain) els.entryFormMain.hidden = false;
   if (els.btnDone) els.btnDone.hidden = false;
   if (els.formTypeRow) els.formTypeRow.hidden = false;
-  updateDoneButton();
-}
-
-function refreshFormState() {
-  updateRangeSummary();
   updateDoneButton();
 }
 
@@ -518,8 +463,9 @@ function openEntryModal(preset, editRow) {
   updateSonstigesFieldVisibility();
   els.formNote.value = editRow ? editRow.note || "" : "";
 
-  let startYmd = toYmd(new Date());
-  let endYmd = startYmd;
+  const today = toYmd(new Date());
+  let startYmd = today;
+  let endYmd = today;
   if (editRow) {
     startYmd = editRow.start_date;
     endYmd = editRow.end_date;
@@ -533,8 +479,7 @@ function openEntryModal(preset, editRow) {
       endYmd = preset.end instanceof Date ? toYmd(preset.end) : startYmd;
     }
   }
-  els.formStart.value = startYmd;
-  els.formEnd.value = endYmd;
+  setDefaultDateRange(startYmd, endYmd);
   refreshFormState();
   setAutosaveStatus("");
   els.modalOvl.classList.add("is-open");
@@ -612,9 +557,6 @@ async function init() {
   els.formSonstigesSuffix = document.getElementById("f-sonstiges-suffix");
   els.formNamePrefix = document.getElementById("f-name-prefix");
   els.formNote = document.getElementById("f-note");
-  els.datePresets = document.getElementById("f-date-presets");
-  els.btnFromToday = document.getElementById("f-from-today");
-  els.rangeSummary = document.getElementById("f-range-summary");
   els.autosaveStatus = document.getElementById("f-autosave-status");
   els.modalTitle = document.getElementById("m-title");
   els.btnDeleteEntry = document.getElementById("btn-delete-entry");
@@ -648,23 +590,10 @@ async function init() {
       scheduleAutosave();
     });
   }
-  if (els.datePresets) {
-    els.datePresets.addEventListener("click", (e) => {
-      const b = e.target && e.target.closest("button[data-inclusivedays]");
-      if (!b) return;
-      const s = (els.formStart && els.formStart.value) || "";
-      if (!s) {
-        toast("Zuerst ein Startdatum wählen", "err");
-        return;
-      }
-      setEndFromInclusiveDuration(s, parseInt(b.getAttribute("data-inclusivedays") || "1", 10));
-    });
-  }
   if (els.formSonstigesSuffix) {
     els.formSonstigesSuffix.addEventListener("input", refreshFormState);
   }
   if (els.formNote) els.formNote.addEventListener("input", refreshFormState);
-  if (els.btnFromToday) els.btnFromToday.addEventListener("click", setRangeFromToday);
   if (els.formStart) {
     els.formStart.addEventListener("change", () => {
       if (els.formEnd.value && els.formEnd.value < els.formStart.value) {
@@ -684,11 +613,7 @@ async function init() {
     });
   }
 
-  if (els.formStart && !els.formStart.value) {
-    const todayYmd = toYmd(new Date());
-    els.formStart.value = todayYmd;
-    if (els.formEnd) els.formEnd.value = todayYmd;
-  }
+  setDefaultDateRange(toYmd(new Date()), toYmd(new Date()));
   refreshFormState();
 
   if (!TEAM_KALENDER_API_URL || TEAM_KALENDER_API_URL.includes("<")) {
@@ -797,7 +722,7 @@ async function init() {
   els.btnViewYear.addEventListener("click", () => calendar.changeView("multiMonthYear"));
 
   els.btnCreate.addEventListener("click", () => {
-    openEntryModal({ start: toYmd(new Date()), end: toYmd(new Date()) });
+    openEntryModal(null, null);
   });
 
   document.getElementById("m-cancel").addEventListener("click", () => closeModal(els.modalOvl));
