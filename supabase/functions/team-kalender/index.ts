@@ -84,8 +84,36 @@ type EventRow = {
   end_date: string;
   note: string | null;
   created_at: string;
-  team_members: { name: string } | null;
+  is_system: boolean;
+  team_members: { name: string; kuerzel: string | null } | null;
 };
+
+function deriveKuerzel(name: string, stored?: string | null): string {
+  const k = (stored || "").trim().toUpperCase();
+  if (k.length >= 2) return k.slice(0, 4);
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return (parts[0]?.slice(0, 2) || "??").toUpperCase();
+}
+
+async function profileKuerzel(userId: string, name: string): Promise<string> {
+  const pub = publicServiceClient();
+  const { data } = await pub
+    .schema("users")
+    .from("profiles")
+    .select("kuerzel,full_name,email")
+    .eq("id", userId)
+    .maybeSingle();
+  return deriveKuerzel(
+    (data?.full_name as string) || (data?.email as string) || name,
+    data?.kuerzel as string | null,
+  );
+}
+
+const SYSTEM_BLOCK_MSG =
+  "Betriebsferien und verpflichtende ROOTS-Tage können nur in den Einstellungen der Urlaubsplanung bearbeitet werden.";
 
 const URLAUB_MANUAL_BLOCK_MSG =
   "Urlaub kann nicht direkt im Team-Kalender eingetragen werden. Bitte über die Urlaubsplanung beantragen – genehmigte Urlaube werden automatisch eingetragen.";
@@ -95,6 +123,29 @@ function urlaubBlockedResponse(c: Record<string, string>) {
     status: 403,
     headers: { ...c, "Content-Type": "application/json" },
   });
+}
+
+function systemBlockedResponse(c: Record<string, string>) {
+  return new Response(JSON.stringify({ error: SYSTEM_BLOCK_MSG }), {
+    status: 403,
+    headers: { ...c, "Content-Type": "application/json" },
+  });
+}
+
+function eventOut(e: EventRow) {
+  return {
+    id: e.id,
+    member_id: e.member_id,
+    type: e.type,
+    title: e.title,
+    start_date: e.start_date,
+    end_date: e.end_date,
+    note: e.note,
+    created_at: e.created_at,
+    is_system: Boolean(e.is_system),
+    member_name: e.team_members?.name ?? null,
+    member_kuerzel: e.team_members?.kuerzel ?? null,
+  };
 }
 
 Deno.serve(async (req) => {
@@ -143,21 +194,11 @@ Deno.serve(async (req) => {
 
       const { data, error } = await supa
         .from("events")
-        .select("id,member_id,type,title,start_date,end_date,note,created_at,team_members(name)")
+        .select("id,member_id,type,title,start_date,end_date,note,created_at,is_system,team_members(name,kuerzel)")
         .order("start_date", { ascending: true });
       if (error) throw error;
       const rows = (data ?? []) as EventRow[];
-      const flat = rows.map((e) => ({
-        id: e.id,
-        member_id: e.member_id,
-        type: e.type,
-        title: e.title,
-        start_date: e.start_date,
-        end_date: e.end_date,
-        note: e.note,
-        created_at: e.created_at,
-        member_name: e.team_members?.name ?? null,
-      }));
+      const flat = rows.map((e) => eventOut(e));
       return new Response(JSON.stringify(flat), {
         status: 200,
         headers: { ...c, "Content-Type": "application/json" },
@@ -178,18 +219,19 @@ Deno.serve(async (req) => {
           );
         }
         await syncRootsClosures(user_id);
+        const kuerzel = await profileKuerzel(user_id, name);
         const { data: byUser } = await supa
           .from("team_members")
-          .select("id,name,user_id,created_at")
+          .select("id,name,user_id,kuerzel,created_at")
           .eq("user_id", user_id)
           .maybeSingle();
         if (byUser) {
-          if (byUser.name !== name) {
+          if (byUser.name !== name || byUser.kuerzel !== kuerzel) {
             const { data: updated, error: uErr } = await supa
               .from("team_members")
-              .update({ name })
+              .update({ name, kuerzel })
               .eq("id", byUser.id)
-              .select("id,name,user_id,created_at")
+              .select("id,name,user_id,kuerzel,created_at")
               .single();
             if (uErr) throw uErr;
             return new Response(JSON.stringify(updated), {
@@ -212,10 +254,10 @@ Deno.serve(async (req) => {
         if (orphan) {
           const { data: linked, error: lErr } = await supa
             .from("team_members")
-            .update({ user_id, name })
+            .update({ user_id, name, kuerzel })
             .eq("id", orphan.id)
             .is("user_id", null)
-            .select("id,name,user_id,created_at")
+            .select("id,name,user_id,kuerzel,created_at")
             .single();
           if (lErr) throw lErr;
           return new Response(JSON.stringify(linked), {
@@ -226,15 +268,15 @@ Deno.serve(async (req) => {
         let insertName = name;
         let { data, error } = await supa
           .from("team_members")
-          .insert({ name: insertName, user_id })
-          .select("id,name,user_id,created_at")
+          .insert({ name: insertName, user_id, kuerzel })
+          .select("id,name,user_id,kuerzel,created_at")
           .single();
         if (error?.code === "23505") {
           insertName = `${name} (${user_id.slice(0, 8)})`;
           ({ data, error } = await supa
             .from("team_members")
-            .insert({ name: insertName, user_id })
-            .select("id,name,user_id,created_at")
+            .insert({ name: insertName, user_id, kuerzel })
+            .select("id,name,user_id,kuerzel,created_at")
             .single());
         }
         if (error) throw error;
@@ -260,7 +302,7 @@ Deno.serve(async (req) => {
         }
         const { data: existing, error: loadErr } = await supa
           .from("events")
-          .select("id,type")
+          .select("id,type,is_system")
           .eq("id", id)
           .maybeSingle();
         if (loadErr) throw loadErr;
@@ -269,6 +311,9 @@ Deno.serve(async (req) => {
             status: 404,
             headers: { ...c, "Content-Type": "application/json" },
           });
+        }
+        if (existing.is_system) {
+          return systemBlockedResponse(c);
         }
         if (existing.type === "urlaub" || type === "urlaub") {
           return urlaubBlockedResponse(c);
@@ -290,22 +335,11 @@ Deno.serve(async (req) => {
           .from("events")
           .update({ type, title, start_date, end_date, note })
           .eq("id", id)
-          .select("id,member_id,type,title,start_date,end_date,note,created_at,team_members(name)")
+          .select("id,member_id,type,title,start_date,end_date,note,created_at,is_system,team_members(name,kuerzel)")
           .single();
         if (error) throw error;
         const e = data as EventRow;
-        const out = {
-          id: e.id,
-          member_id: e.member_id,
-          type: e.type,
-          title: e.title,
-          start_date: e.start_date,
-          end_date: e.end_date,
-          note: e.note,
-          created_at: e.created_at,
-          member_name: e.team_members?.name ?? null,
-        };
-        return new Response(JSON.stringify(out), {
+        return new Response(JSON.stringify(eventOut(e)), {
           status: 200,
           headers: { ...c, "Content-Type": "application/json" },
         });
@@ -374,22 +408,11 @@ Deno.serve(async (req) => {
       const { data, error } = await supa
         .from("events")
         .insert({ member_id, type, title, start_date, end_date, note })
-        .select("id,member_id,type,title,start_date,end_date,note,created_at,team_members(name)")
+        .select("id,member_id,type,title,start_date,end_date,note,created_at,is_system,team_members(name,kuerzel)")
         .single();
       if (error) throw error;
       const e = data as EventRow;
-      const out = {
-        id: e.id,
-        member_id: e.member_id,
-        type: e.type,
-        title: e.title,
-        start_date: e.start_date,
-        end_date: e.end_date,
-        note: e.note,
-        created_at: e.created_at,
-        member_name: e.team_members?.name ?? null,
-      };
-      return new Response(JSON.stringify(out), {
+      return new Response(JSON.stringify(eventOut(e)), {
         status: 201,
         headers: { ...c, "Content-Type": "application/json" },
       });
@@ -427,10 +450,13 @@ Deno.serve(async (req) => {
       }
       const { data: evRow, error: evLoadErr } = await supa
         .from("events")
-        .select("type")
+        .select("type,is_system")
         .eq("id", id)
         .maybeSingle();
       if (evLoadErr) throw evLoadErr;
+      if (evRow?.is_system) {
+        return systemBlockedResponse(c);
+      }
       if (evRow?.type === "urlaub") {
         return urlaubBlockedResponse(c);
       }

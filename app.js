@@ -34,9 +34,9 @@ let nrwDateSet = new Set();
 let nrwHolidayRows = [];
 let currentMemberId = null;
 let currentMemberName = "";
+let currentMemberKuerzel = "";
 let draftEventId = null;
-let autosaveTimer = null;
-let autosaveBusy = false;
+let saveBusy = false;
 
 const els = {
   cal: null,
@@ -88,14 +88,34 @@ function showUrlaubNotice(show, message) {
     els.urlaubNoticeText.innerHTML = message;
   }
   if (els.formTypeRow) els.formTypeRow.hidden = show;
-  setEntryFormLocked(show);
+  if (els.entryFormMain) els.entryFormMain.hidden = show;
+  if (els.btnDeleteEntry && show) els.btnDeleteEntry.hidden = true;
+  if (els.btnDone && show) els.btnDone.hidden = true;
 }
 
-function setEntryFormLocked(locked) {
-  if (els.entryFormMain) {
-    els.entryFormMain.classList.toggle("is-locked", locked);
+function deriveKuerzel(name, stored) {
+  const k = (stored || "").trim().toUpperCase();
+  if (k.length >= 2) return k.slice(0, 4);
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
-  if (els.btnDeleteEntry && locked) els.btnDeleteEntry.hidden = true;
+  return (parts[0]?.slice(0, 2) || "??").toUpperCase();
+}
+
+function memberKuerzel() {
+  const ru = window.RootsUser?._p;
+  const fromProfile = ru?.kuerzel;
+  if (fromProfile) return deriveKuerzel(currentMemberName, fromProfile);
+  return deriveKuerzel(currentMemberName, currentMemberKuerzel);
+}
+
+function isSystemEntry(row) {
+  return Boolean(row?.is_system || String(row?.note || "").includes("AUTO:roots_closure"));
+}
+
+function isReadOnlyEntry(row) {
+  return Boolean(row && (row.type === "urlaub" || isSystemEntry(row)));
 }
 
 function toast(msg, kind = "ok") {
@@ -121,22 +141,27 @@ function memberDisplayName() {
 }
 
 function buildAutoTitle(type, sonstigesSuffix = "") {
-  const name = memberDisplayName();
+  const kz = memberKuerzel();
   if (type === "sonstiges") {
     const suffix = (sonstigesSuffix || "").trim();
-    return suffix ? `${name} ${suffix}` : "";
+    return suffix ? `${kz}: ${suffix}` : "";
   }
   const label = TYPE_LABELS[type] || type;
-  return `${name} ${label}`;
+  return `${kz}: ${label}`;
 }
 
 function parseSonstigesSuffix(storedTitle) {
-  const name = memberDisplayName();
+  const kz = memberKuerzel();
   const t = (storedTitle || "").trim();
   if (!t) return "";
-  const prefix = `${name} `;
-  if (t.toLowerCase().startsWith(prefix.toLowerCase())) {
+  const prefix = `${kz}: `;
+  if (t.toUpperCase().startsWith(prefix.toUpperCase())) {
     return t.slice(prefix.length).trim();
+  }
+  const name = memberDisplayName();
+  const legacyName = `${name} `;
+  if (t.toLowerCase().startsWith(legacyName.toLowerCase())) {
+    return t.slice(legacyName.length).trim();
   }
   const legacy = `${name} · ${TYPE_LABELS.sonstiges}`;
   if (t === legacy) return "";
@@ -144,8 +169,8 @@ function parseSonstigesSuffix(storedTitle) {
 }
 
 function readFormPayload() {
-  const s = readYmdFromCombos("f-start") || (els.formStart && els.formStart.value) || "";
-  const e = readYmdFromCombos("f-end") || (els.formEnd && els.formEnd.value) || "";
+  const s = (els.formStart && els.formStart.value) || "";
+  const e = (els.formEnd && els.formEnd.value) || "";
   const type = els.formType.value;
   const suffix =
     type === "sonstiges" && els.formSonstigesSuffix
@@ -177,7 +202,7 @@ function updateSonstigesFieldVisibility() {
     els.formSonstigesWrap.hidden = !isSonstiges;
   }
   if (els.formNamePrefix) {
-    els.formNamePrefix.textContent = `${memberDisplayName()} `;
+    els.formNamePrefix.textContent = `${memberKuerzel()}: `;
   }
   if (isSonstiges && els.formSonstigesSuffix) {
     requestAnimationFrame(() => els.formSonstigesSuffix.focus());
@@ -186,13 +211,15 @@ function updateSonstigesFieldVisibility() {
 
 function updateDoneButton() {
   if (!els.btnDone) return;
-  els.btnDone.disabled = !draftEventId;
+  const ready = isEntryReady() && els.formType?.value !== "urlaub";
+  els.btnDone.disabled = !ready;
+  els.btnDone.textContent = draftEventId ? "Speichern" : "Hinzufügen";
 }
 
 function updateRangeSummary() {
   if (!els.rangeSummary) return;
-  const s = readYmdFromCombos("f-start") || (els.formStart && els.formStart.value) || "";
-  const e = readYmdFromCombos("f-end") || (els.formEnd && els.formEnd.value) || "";
+  const s = (els.formStart && els.formStart.value) || "";
+  const e = (els.formEnd && els.formEnd.value) || "";
   els.rangeSummary.classList.remove("is-invalid");
   if (!s || !e) {
     els.rangeSummary.textContent = "Start und Ende wählen";
@@ -242,89 +269,11 @@ function countInclusiveDays(startYmd, endYmd) {
 function setRangeFromToday() {
   const today = toYmd(new Date());
   if (els.formStart) els.formStart.value = today;
-  setCombosFromYmd("f-start", today);
   if (els.formEnd) {
     const end = els.formEnd.value && els.formEnd.value >= today ? els.formEnd.value : today;
     els.formEnd.value = end;
-    setCombosFromYmd("f-end", end);
   }
-  updateRangeSummary();
-  scheduleAutosave();
-}
-
-function fillDayOptions(dSel, y, m, prefer) {
-  if (!dSel) return 1;
-  const maxD = daysInMonth(y, m);
-  const want = prefer != null && prefer > 0 ? prefer : 1;
-  const use = want > maxD ? maxD : want;
-  dSel.innerHTML = "";
-  for (let i = 1; i <= maxD; i++) {
-    const o = document.createElement("option");
-    o.value = String(i);
-    o.textContent = String(i);
-    dSel.appendChild(o);
-  }
-  dSel.value = String(use);
-  return use;
-}
-
-function buildYearOptions(ySel, centerY) {
-  if (!ySel) return;
-  const from = (centerY || new Date().getFullYear()) - 2;
-  const to = from + 7;
-  ySel.innerHTML = "";
-  for (let y = from; y <= to; y++) {
-    const o = document.createElement("option");
-    o.value = String(y);
-    o.textContent = String(y);
-    ySel.appendChild(o);
-  }
-}
-
-function buildMonthOptions(mSel) {
-  if (!mSel) return;
-  mSel.innerHTML = "";
-  for (let m = 1; m <= 12; m++) {
-    const o = document.createElement("option");
-    o.value = String(m);
-    o.textContent = MONTHS_DE[m - 1];
-    mSel.appendChild(o);
-  }
-}
-
-function readYmdFromCombos(idBase) {
-  const dEl = document.getElementById(`${idBase}-d`);
-  const mEl = document.getElementById(`${idBase}-m`);
-  const yEl = document.getElementById(`${idBase}-y`);
-  if (!dEl || !mEl || !yEl) return "";
-  const y = parseInt(yEl.value, 10);
-  const m = parseInt(mEl.value, 10);
-  const d = parseInt(dEl.value, 10);
-  if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) return "";
-  return ymdFromParts(y, m, d);
-}
-
-function setCombosFromYmd(idBase, ymd) {
-  if (!ymd || ymd.length < 10) return;
-  const dEl = document.getElementById(`${idBase}-d`);
-  const mEl = document.getElementById(`${idBase}-m`);
-  const yEl = document.getElementById(`${idBase}-y`);
-  const hEl = document.getElementById(idBase);
-  if (!dEl || !mEl || !yEl) return;
-  const y = parseInt(ymd.slice(0, 4), 10);
-  const m = parseInt(ymd.slice(5, 7), 10);
-  const d = parseInt(ymd.slice(8, 10), 10);
-  if (yEl.querySelector(`option[value="${y}"]`) == null) {
-    const o = document.createElement("option");
-    o.value = String(y);
-    o.textContent = String(y);
-    yEl.appendChild(o);
-  }
-  yEl.value = String(y);
-  mEl.value = String(m);
-  fillDayOptions(dEl, y, m, d);
-  if (hEl) hEl.value = ymdFromParts(y, m, parseInt(dEl.value, 10));
-  updateRangeSummary();
+  refreshFormState();
 }
 
 function ymdAddDays(ymd, n) {
@@ -336,9 +285,8 @@ function ymdAddDays(ymd, n) {
 function setEndFromInclusiveDuration(ymd, inclusiveDays) {
   if (!ymd || !els.formEnd) return;
   const days = Math.max(1, Math.floor(inclusiveDays));
-  const endY = ymdAddDays(ymd, days - 1);
-  els.formEnd.value = endY;
-  setCombosFromYmd("f-end", endY);
+  els.formEnd.value = ymdAddDays(ymd, days - 1);
+  refreshFormState();
 }
 
 function inclusiveEndToFcEndYmd(ymd) {
@@ -444,8 +392,14 @@ function closeModal(ov) {
   draftEventId = null;
   setAutosaveStatus("");
   showUrlaubNotice(false);
-  setEntryFormLocked(false);
+  if (els.entryFormMain) els.entryFormMain.hidden = false;
+  if (els.btnDone) els.btnDone.hidden = false;
   if (els.formTypeRow) els.formTypeRow.hidden = false;
+  updateDoneButton();
+}
+
+function refreshFormState() {
+  updateRangeSummary();
   updateDoneButton();
 }
 
@@ -456,9 +410,12 @@ function setFormTypeValue(type) {
       true,
       `<i class="fa-solid fa-circle-info" aria-hidden="true"></i> ${URLAUB_BLOCK_MSG}`,
     );
+    if (els.btnDone) els.btnDone.hidden = true;
+    updateDoneButton();
     return;
   }
   showUrlaubNotice(false);
+  if (els.btnDone) els.btnDone.hidden = false;
   const t = type && Object.prototype.hasOwnProperty.call(TYPE_LABELS, type) ? type : "krank";
   els.formType.value = t;
   if (els.formTypeChips) {
@@ -471,25 +428,19 @@ function setFormTypeValue(type) {
 }
 
 function scheduleAutosave() {
-  clearTimeout(autosaveTimer);
-  updateRangeSummary();
-  if (!isEntryReady()) {
-    updateDoneButton();
-    return;
-  }
-  autosaveTimer = setTimeout(() => persistEntry(), 700);
+  refreshFormState();
 }
 
 async function persistEntry() {
-  if (!currentMemberId || autosaveBusy) return;
-  if (!isEntryReady()) return;
+  if (!currentMemberId || saveBusy) return false;
+  if (!isEntryReady()) return false;
   const { title, type, start_date, end_date, note } = readFormPayload();
   if (type === "urlaub") {
     toast(URLAUB_BLOCK_MSG, "err");
-    showUrlaubNotice(true);
-    return;
+    showUrlaubNotice(true, `<i class="fa-solid fa-circle-info" aria-hidden="true"></i> ${URLAUB_BLOCK_MSG}`);
+    return false;
   }
-  autosaveBusy = true;
+  saveBusy = true;
   try {
     let row;
     if (draftEventId) {
@@ -503,20 +454,20 @@ async function persistEntry() {
         end_date,
         note,
       });
-      draftEventId = row.id;
     }
     const idx = dbRows.findIndex((r) => r.id === row.id);
     if (idx >= 0) dbRows[idx] = row;
     else dbRows.push(row);
     rebuildDbEvents();
-    updateDoneButton();
     setAutosaveStatus("Gespeichert", "ok");
+    return true;
   } catch (err) {
     console.error(err);
     toast(err.message || "Speichern fehlgeschlagen", "err");
     setAutosaveStatus("Speichern fehlgeschlagen", "err");
+    return false;
   } finally {
-    autosaveBusy = false;
+    saveBusy = false;
   }
 }
 
@@ -527,25 +478,29 @@ function openEntryModal(preset, editRow) {
   }
   draftEventId = editRow ? editRow.id : null;
   const editType = editRow ? (editRow.type === "homeoffice" ? "sonstiges" : editRow.type) : "krank";
-  const isUrlaubView = editRow && editRow.type === "urlaub";
+  const readOnly = editRow && isReadOnlyEntry(editRow);
+  const isClosure = editRow && isSystemEntry(editRow);
 
   if (els.modalTitle) {
-    els.modalTitle.textContent = isUrlaubView
-      ? "Urlaub (automatisch eingetragen)"
+    els.modalTitle.textContent = readOnly
+      ? isClosure
+        ? "Betriebsferien / ROOTS-Tag"
+        : "Urlaub (automatisch eingetragen)"
       : editRow
         ? "Eintrag bearbeiten"
         : "Eintrag erstellen";
   }
   if (els.btnDeleteEntry) {
-    els.btnDeleteEntry.hidden = !editRow || isUrlaubView;
+    els.btnDeleteEntry.hidden = !editRow || readOnly;
   }
 
-  if (isUrlaubView) {
-    showUrlaubNotice(
-      true,
-      `<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Genehmigter Urlaub: <strong>${formatYmdDe(editRow.start_date)} – ${formatYmdDe(editRow.end_date)}</strong>. Änderungen nur über die Urlaubsplanung.`,
-    );
+  if (readOnly) {
+    const msg = isClosure
+      ? `<i class="fa-solid fa-building" aria-hidden="true"></i> <strong>${formatYmdDe(editRow.start_date)}</strong> – ${escapeHtml(editRow.title || "Betriebsferien")}. Änderungen nur in den Einstellungen der Urlaubsplanung (Admin).`
+      : `<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Genehmigter Urlaub: <strong>${formatYmdDe(editRow.start_date)} – ${formatYmdDe(editRow.end_date)}</strong>. Änderungen nur über die Urlaubsplanung.`;
+    showUrlaubNotice(true, msg);
     if (els.formNote) els.formNote.value = editRow.note || "";
+    if (els.btnDone) els.btnDone.hidden = true;
     updateDoneButton();
     setAutosaveStatus("");
     els.modalOvl.classList.add("is-open");
@@ -554,6 +509,7 @@ function openEntryModal(preset, editRow) {
   }
 
   showUrlaubNotice(false);
+  if (els.btnDone) els.btnDone.hidden = false;
   setFormTypeValue(editRow ? editType : "krank");
   if (els.formSonstigesSuffix) {
     els.formSonstigesSuffix.value =
@@ -579,18 +535,18 @@ function openEntryModal(preset, editRow) {
   }
   els.formStart.value = startYmd;
   els.formEnd.value = endYmd;
-  setCombosFromYmd("f-start", startYmd);
-  setCombosFromYmd("f-end", endYmd);
-  updateRangeSummary();
-  updateDoneButton();
+  refreshFormState();
   setAutosaveStatus("");
   els.modalOvl.classList.add("is-open");
   els.modalOvl.setAttribute("aria-hidden", "false");
-  if (editRow) {
-    scheduleAutosave();
-  } else if (editType !== "sonstiges") {
-    scheduleAutosave();
-  }
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function isRootsProfileReady() {
@@ -621,6 +577,7 @@ async function resolveCurrentMember() {
   const m = await ensureMemberForUser(ru._uid, name);
   currentMemberId = m.id;
   currentMemberName = name;
+  currentMemberKuerzel = m.kuerzel || ru._p.kuerzel || deriveKuerzel(name);
   updateSonstigesFieldVisibility();
 }
 
@@ -695,67 +652,44 @@ async function init() {
     els.datePresets.addEventListener("click", (e) => {
       const b = e.target && e.target.closest("button[data-inclusivedays]");
       if (!b) return;
-      const s = readYmdFromCombos("f-start") || (els.formStart && els.formStart.value) || "";
+      const s = (els.formStart && els.formStart.value) || "";
       if (!s) {
         toast("Zuerst ein Startdatum wählen", "err");
         return;
       }
       setEndFromInclusiveDuration(s, parseInt(b.getAttribute("data-inclusivedays") || "1", 10));
-      scheduleAutosave();
     });
   }
   if (els.formSonstigesSuffix) {
-    els.formSonstigesSuffix.addEventListener("input", scheduleAutosave);
+    els.formSonstigesSuffix.addEventListener("input", refreshFormState);
   }
-  if (els.formNote) els.formNote.addEventListener("input", scheduleAutosave);
+  if (els.formNote) els.formNote.addEventListener("input", refreshFormState);
   if (els.btnFromToday) els.btnFromToday.addEventListener("click", setRangeFromToday);
+  if (els.formStart) {
+    els.formStart.addEventListener("change", () => {
+      if (els.formEnd.value && els.formEnd.value < els.formStart.value) {
+        els.formEnd.value = els.formStart.value;
+      }
+      refreshFormState();
+    });
+  }
+  if (els.formEnd) {
+    els.formEnd.addEventListener("change", refreshFormState);
+  }
   if (els.btnDone) {
-    els.btnDone.addEventListener("click", () => {
-      if (!draftEventId) return;
-      closeModal(els.modalOvl);
+    els.btnDone.addEventListener("click", async () => {
+      if (!isEntryReady() || els.formType?.value === "urlaub") return;
+      const ok = await persistEntry();
+      if (ok) closeModal(els.modalOvl);
     });
   }
 
-  (function initDateCombos() {
-    const yNow = new Date().getFullYear();
-    buildYearOptions(document.getElementById("f-start-y"), yNow);
-    buildYearOptions(document.getElementById("f-end-y"), yNow);
-    buildMonthOptions(document.getElementById("f-start-m"));
-    buildMonthOptions(document.getElementById("f-end-m"));
+  if (els.formStart && !els.formStart.value) {
     const todayYmd = toYmd(new Date());
-    if (els.formStart) {
-      if (!els.formStart.value) els.formStart.value = todayYmd;
-      setCombosFromYmd("f-start", els.formStart.value);
-    }
-    if (els.formEnd) {
-      if (!els.formEnd.value) els.formEnd.value = todayYmd;
-      setCombosFromYmd("f-end", els.formEnd.value);
-    }
-    function handleDatePartChange(idBase) {
-      const mEl = document.getElementById(`${idBase}-m`);
-      const yEl = document.getElementById(`${idBase}-y`);
-      const dEl = document.getElementById(`${idBase}-d`);
-      if (!mEl || !yEl || !dEl) return;
-      const y = parseInt(yEl.value, 10);
-      const m = parseInt(mEl.value, 10);
-      fillDayOptions(dEl, y, m, parseInt(dEl.value, 10));
-      const h = document.getElementById(idBase);
-      if (h) h.value = readYmdFromCombos(idBase) || h.value;
-      if (idBase === "f-start" && els.formStart && els.formEnd && els.formStart.value > els.formEnd.value) {
-        els.formEnd.value = els.formStart.value;
-        setCombosFromYmd("f-end", els.formEnd.value);
-      }
-      updateRangeSummary();
-      scheduleAutosave();
-    }
-    ["f-start", "f-end"].forEach((idBase) => {
-      ["d", "m", "y"].forEach((p) => {
-        const el = document.getElementById(`${idBase}-${p}`);
-        if (el) el.addEventListener("change", () => handleDatePartChange(idBase));
-      });
-    });
-    updateRangeSummary();
-  })();
+    els.formStart.value = todayYmd;
+    if (els.formEnd) els.formEnd.value = todayYmd;
+  }
+  refreshFormState();
 
   if (!TEAM_KALENDER_API_URL || TEAM_KALENDER_API_URL.includes("<")) {
     toast("config.js: TEAM_KALENDER_API_URL prüfen", "err");
@@ -883,9 +817,9 @@ async function init() {
     els.btnDeleteEntry.addEventListener("click", async () => {
       if (!draftEventId) return;
       const row = dbRows.find((r) => r.id === draftEventId);
-      if (row?.type === "urlaub") {
-        toast(URLAUB_BLOCK_MSG, "err");
-        showUrlaubNotice(true);
+      if (row?.type === "urlaub" || isSystemEntry(row)) {
+        toast("Dieser Eintrag kann hier nicht bearbeitet werden", "err");
+        openEntryModal(null, row);
         return;
       }
       if (!confirm("Eintrag wirklich löschen?")) return;
