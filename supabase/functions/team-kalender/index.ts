@@ -57,6 +57,24 @@ function serviceClient() {
   });
 }
 
+function publicServiceClient() {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+async function syncRootsClosures(userId: string) {
+  const pub = publicServiceClient();
+  const { error } = await pub.rpc("sync_roots_closures_for_user", {
+    p_user_id: userId,
+    p_year: new Date().getFullYear(),
+  });
+  if (error) console.error("[team-kalender] sync_roots_closures", error.message);
+}
+
 type EventRow = {
   id: string;
   member_id: string;
@@ -149,6 +167,7 @@ Deno.serve(async (req) => {
             { status: 400, headers: { ...c, "Content-Type": "application/json" } },
           );
         }
+        await syncRootsClosures(user_id);
         const { data: byUser } = await supa
           .from("team_members")
           .select("id,name,user_id,created_at")
