@@ -62,7 +62,41 @@ const els = {
   btnViewMonth: null,
   btnViewWeek: null,
   btnViewYear: null,
+  urlaubNotice: null,
+  urlaubNoticeText: null,
+  entryFormMain: null,
+  formTypeRow: null,
+  btnOpenUrlaubsplanung: null,
 };
+
+const URLAUB_BLOCK_MSG =
+  "Urlaub bitte über die Urlaubsplanung beantragen. Nach Genehmigung erscheint er automatisch im Kalender.";
+
+function openUrlaubsplanung() {
+  const ORIGIN = "https://pgoutzeris-stack.github.io";
+  closeModal(els.modalOvl);
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: "roots-open-view", view: "vacation" }, ORIGIN);
+    return;
+  }
+  window.top.location.href = `${ORIGIN}/ROOTS_Intranet/#vacation`;
+}
+
+function showUrlaubNotice(show, message) {
+  if (els.urlaubNotice) els.urlaubNotice.hidden = !show;
+  if (els.urlaubNoticeText && message) {
+    els.urlaubNoticeText.innerHTML = message;
+  }
+  if (els.formTypeRow) els.formTypeRow.hidden = show;
+  setEntryFormLocked(show);
+}
+
+function setEntryFormLocked(locked) {
+  if (els.entryFormMain) {
+    els.entryFormMain.classList.toggle("is-locked", locked);
+  }
+  if (els.btnDeleteEntry && locked) els.btnDeleteEntry.hidden = true;
+}
 
 function toast(msg, kind = "ok") {
   const t = document.createElement("div");
@@ -409,12 +443,23 @@ function closeModal(ov) {
   ov.setAttribute("aria-hidden", "true");
   draftEventId = null;
   setAutosaveStatus("");
+  showUrlaubNotice(false);
+  setEntryFormLocked(false);
+  if (els.formTypeRow) els.formTypeRow.hidden = false;
   updateDoneButton();
 }
 
 function setFormTypeValue(type) {
   if (!els.formType) return;
-  const t = type && Object.prototype.hasOwnProperty.call(TYPE_LABELS, type) ? type : "urlaub";
+  if (type === "urlaub") {
+    showUrlaubNotice(
+      true,
+      `<i class="fa-solid fa-circle-info" aria-hidden="true"></i> ${URLAUB_BLOCK_MSG}`,
+    );
+    return;
+  }
+  showUrlaubNotice(false);
+  const t = type && Object.prototype.hasOwnProperty.call(TYPE_LABELS, type) ? type : "krank";
   els.formType.value = t;
   if (els.formTypeChips) {
     els.formTypeChips.querySelectorAll(".entry-type-card").forEach((btn) => {
@@ -439,6 +484,11 @@ async function persistEntry() {
   if (!currentMemberId || autosaveBusy) return;
   if (!isEntryReady()) return;
   const { title, type, start_date, end_date, note } = readFormPayload();
+  if (type === "urlaub") {
+    toast(URLAUB_BLOCK_MSG, "err");
+    showUrlaubNotice(true);
+    return;
+  }
   autosaveBusy = true;
   try {
     let row;
@@ -476,14 +526,35 @@ function openEntryModal(preset, editRow) {
     return;
   }
   draftEventId = editRow ? editRow.id : null;
+  const editType = editRow ? (editRow.type === "homeoffice" ? "sonstiges" : editRow.type) : "krank";
+  const isUrlaubView = editRow && editRow.type === "urlaub";
+
   if (els.modalTitle) {
-    els.modalTitle.textContent = editRow ? "Eintrag bearbeiten" : "Eintrag erstellen";
+    els.modalTitle.textContent = isUrlaubView
+      ? "Urlaub (automatisch eingetragen)"
+      : editRow
+        ? "Eintrag bearbeiten"
+        : "Eintrag erstellen";
   }
   if (els.btnDeleteEntry) {
-    els.btnDeleteEntry.hidden = !editRow;
+    els.btnDeleteEntry.hidden = !editRow || isUrlaubView;
   }
-  const editType = editRow ? (editRow.type === "homeoffice" ? "sonstiges" : editRow.type) : "urlaub";
-  setFormTypeValue(editRow ? editType : "urlaub");
+
+  if (isUrlaubView) {
+    showUrlaubNotice(
+      true,
+      `<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Genehmigter Urlaub: <strong>${formatYmdDe(editRow.start_date)} – ${formatYmdDe(editRow.end_date)}</strong>. Änderungen nur über die Urlaubsplanung.`,
+    );
+    if (els.formNote) els.formNote.value = editRow.note || "";
+    updateDoneButton();
+    setAutosaveStatus("");
+    els.modalOvl.classList.add("is-open");
+    els.modalOvl.setAttribute("aria-hidden", "false");
+    return;
+  }
+
+  showUrlaubNotice(false);
+  setFormTypeValue(editRow ? editType : "krank");
   if (els.formSonstigesSuffix) {
     els.formSonstigesSuffix.value =
       editRow && editType === "sonstiges" ? parseSonstigesSuffix(editRow.title) : "";
@@ -596,14 +667,27 @@ async function init() {
   els.btnViewMonth = document.getElementById("view-month");
   els.btnViewWeek = document.getElementById("view-week");
   els.btnViewYear = document.getElementById("view-year");
+  els.urlaubNotice = document.getElementById("f-urlaub-notice");
+  els.urlaubNoticeText = document.getElementById("f-urlaub-notice-text");
+  els.entryFormMain = document.getElementById("f-entry-form-main");
+  els.formTypeRow = document.querySelector(".field-group-type");
+  els.btnOpenUrlaubsplanung = document.getElementById("btn-open-urlaubsplanung");
 
-  if (els.formType) setFormTypeValue(els.formType.value);
+  if (els.formType) setFormTypeValue(els.formType.value || "krank");
+
+  if (els.btnOpenUrlaubsplanung) {
+    els.btnOpenUrlaubsplanung.addEventListener("click", openUrlaubsplanung);
+  }
 
   if (els.formTypeChips) {
     els.formTypeChips.addEventListener("click", (e) => {
       const btn = e.target && e.target.closest(".entry-type-card[data-type]");
       if (!btn) return;
-      setFormTypeValue(btn.getAttribute("data-type") || "urlaub");
+      if (btn.getAttribute("data-block-urlaub") === "1" || btn.getAttribute("data-type") === "urlaub") {
+        setFormTypeValue("urlaub");
+        return;
+      }
+      setFormTypeValue(btn.getAttribute("data-type") || "krank");
       scheduleAutosave();
     });
   }
@@ -798,6 +882,12 @@ async function init() {
   if (els.btnDeleteEntry) {
     els.btnDeleteEntry.addEventListener("click", async () => {
       if (!draftEventId) return;
+      const row = dbRows.find((r) => r.id === draftEventId);
+      if (row?.type === "urlaub") {
+        toast(URLAUB_BLOCK_MSG, "err");
+        showUrlaubNotice(true);
+        return;
+      }
       if (!confirm("Eintrag wirklich löschen?")) return;
       try {
         await deleteEventById(draftEventId);

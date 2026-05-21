@@ -557,6 +557,53 @@
       transform: scale(1.08);
       opacity: 1;
     }
+    .entry-type-card--urlaub {
+      border-style: dashed;
+      border-color: rgba(32, 110, 251, 0.35);
+    }
+    .entry-type-card--urlaub:hover {
+      border-color: var(--brand);
+      color: var(--brand);
+    }
+    .entry-urlaub-notice {
+      border: 1px solid rgba(32, 110, 251, 0.25);
+      background: var(--brand-light, #eff6ff);
+      border-radius: 14px;
+      padding: 1rem 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+    .entry-urlaub-notice p {
+      margin: 0 0 0.85rem;
+      font-size: 0.875rem;
+      line-height: 1.55;
+      color: var(--ink);
+    }
+    .entry-urlaub-notice p i {
+      color: var(--brand);
+      margin-right: 0.35rem;
+    }
+    .entry-urlaub-notice .btn-open-urlaub {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.55rem 1rem;
+      border: none;
+      border-radius: 999px;
+      background: var(--brand);
+      color: #fff;
+      font-family: var(--font-ui);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .entry-urlaub-notice .btn-open-urlaub:hover {
+      background: var(--brand-dark, #1d5fd4);
+    }
+    .entry-form-main.is-locked {
+      opacity: 0.55;
+      pointer-events: none;
+      user-select: none;
+    }
 
     .entry-when {
       border: 1px solid var(--line);
@@ -1272,13 +1319,13 @@
 
       <div class="entry-sheet__body">
         <div class="entry-block field-group-type">
-          <input type="hidden" id="f-type" value="urlaub" />
+          <input type="hidden" id="f-type" value="krank" />
           <div class="entry-type-row" id="f-type-chips" role="group" aria-label="Abwesenheitstyp">
-            <button type="button" class="entry-type-card" data-type="urlaub" aria-pressed="true">
+            <button type="button" class="entry-type-card entry-type-card--urlaub" data-type="urlaub" data-block-urlaub="1" aria-pressed="false">
               <i class="fa-solid fa-umbrella-beach" aria-hidden="true"></i>
               Urlaub
             </button>
-            <button type="button" class="entry-type-card" data-type="krank" aria-pressed="false">
+            <button type="button" class="entry-type-card" data-type="krank" aria-pressed="true">
               <i class="fa-solid fa-heart-pulse" aria-hidden="true"></i>
               Krank
             </button>
@@ -1293,6 +1340,12 @@
           </div>
         </div>
 
+        <div class="entry-urlaub-notice" id="f-urlaub-notice" hidden>
+          <p id="f-urlaub-notice-text"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Urlaub bitte über die <strong>Urlaubsplanung</strong> beantragen. Nach Genehmigung erscheint er automatisch im Team-Kalender.</p>
+          <button type="button" class="btn-open-urlaub" id="btn-open-urlaubsplanung"><i class="fa-solid fa-umbrella-beach" aria-hidden="true"></i> Zur Urlaubsplanung</button>
+        </div>
+
+        <div class="entry-form-main" id="f-entry-form-main">
         <div class="entry-block entry-sonstiges-field" id="f-sonstiges-wrap" hidden>
           <div class="entry-prefixed-input">
             <span class="entry-prefixed-input__prefix" id="f-name-prefix" aria-hidden="true"></span>
@@ -1355,6 +1408,7 @@
             placeholder="Notiz (optional)"
             aria-label="Notiz optional"
           />
+        </div>
         </div>
       </div>
 

@@ -87,6 +87,16 @@ type EventRow = {
   team_members: { name: string } | null;
 };
 
+const URLAUB_MANUAL_BLOCK_MSG =
+  "Urlaub kann nicht direkt im Team-Kalender eingetragen werden. Bitte über die Urlaubsplanung beantragen – genehmigte Urlaube werden automatisch eingetragen.";
+
+function urlaubBlockedResponse(c: Record<string, string>) {
+  return new Response(JSON.stringify({ error: URLAUB_MANUAL_BLOCK_MSG }), {
+    status: 403,
+    headers: { ...c, "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req) => {
   const c = corsHeaders(req);
   if (req.method === "OPTIONS") {
@@ -248,6 +258,21 @@ Deno.serve(async (req) => {
             { status: 400, headers: { ...c, "Content-Type": "application/json" } },
           );
         }
+        const { data: existing, error: loadErr } = await supa
+          .from("events")
+          .select("id,type")
+          .eq("id", id)
+          .maybeSingle();
+        if (loadErr) throw loadErr;
+        if (!existing) {
+          return new Response(JSON.stringify({ error: "Eintrag nicht gefunden" }), {
+            status: 404,
+            headers: { ...c, "Content-Type": "application/json" },
+          });
+        }
+        if (existing.type === "urlaub" || type === "urlaub") {
+          return urlaubBlockedResponse(c);
+        }
         if (title.length < 1) {
           return new Response(JSON.stringify({ error: "title erforderlich" }), {
             status: 400,
@@ -343,6 +368,9 @@ Deno.serve(async (req) => {
           headers: { ...c, "Content-Type": "application/json" },
         });
       }
+      if (type === "urlaub") {
+        return urlaubBlockedResponse(c);
+      }
       const { data, error } = await supa
         .from("events")
         .insert({ member_id, type, title, start_date, end_date, note })
@@ -396,6 +424,15 @@ Deno.serve(async (req) => {
           status: 200,
           headers: { ...c, "Content-Type": "application/json" },
         });
+      }
+      const { data: evRow, error: evLoadErr } = await supa
+        .from("events")
+        .select("type")
+        .eq("id", id)
+        .maybeSingle();
+      if (evLoadErr) throw evLoadErr;
+      if (evRow?.type === "urlaub") {
+        return urlaubBlockedResponse(c);
       }
       const { error } = await supa.from("events").delete().eq("id", id);
       if (error) throw error;
