@@ -727,12 +727,20 @@ async function init() {
   syncViewButtons = function () {
     if (!calendar) return;
     const t = calendar.view.type;
-    [els.btnViewMonth, els.btnViewWeek, els.btnViewYear].forEach((b) =>
-      b.setAttribute("aria-pressed", "false"),
-    );
-    if (t === "dayGridMonth") els.btnViewMonth.setAttribute("aria-pressed", "true");
-    else if (t === "dayGridWeek") els.btnViewWeek.setAttribute("aria-pressed", "true");
-    else if (t === "multiMonthYear") els.btnViewYear.setAttribute("aria-pressed", "true");
+    [els.btnViewMonth, els.btnViewWeek, els.btnViewYear].forEach((b) => {
+      if (!b) return;
+      b.classList.remove("active");
+      b.setAttribute("aria-pressed", "false");
+    });
+    let activeBtn = els.btnViewMonth;
+    if (t === "dayGridWeek") activeBtn = els.btnViewWeek;
+    else if (t === "multiMonthYear") activeBtn = els.btnViewYear;
+    if (activeBtn) {
+      activeBtn.classList.add("active");
+      activeBtn.setAttribute("aria-pressed", "true");
+    }
+    const titleEl = document.getElementById("dash-cal-title");
+    if (titleEl && calendar.view?.title) titleEl.textContent = calendar.view.title;
   };
 
   try {
