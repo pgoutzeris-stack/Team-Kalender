@@ -125,6 +125,74 @@ function urlaubBlockedResponse(c: Record<string, string>) {
   });
 }
 
+function approvedUrlaubBlockedResponse(c: Record<string, string>) {
+  return new Response(
+    JSON.stringify({
+      error:
+        "Genehmigter Urlaub kann nur über die Urlaubsplanung geändert oder gelöscht werden.",
+    }),
+    { status: 403, headers: { ...c, "Content-Type": "application/json" } },
+  );
+}
+
+async function getAuthUser(req: Request) {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (!authHeader) return null;
+  const url = Deno.env.get("SUPABASE_URL");
+  const anon = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!url || !anon) return null;
+  const client = createClient(url, anon, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const {
+    data: { user },
+    error,
+  } = await client.auth.getUser();
+  if (error || !user) return null;
+  return user;
+}
+
+async function isRequestAdmin(req: Request): Promise<boolean> {
+  const user = await getAuthUser(req);
+  if (!user) return false;
+  const pub = publicServiceClient();
+  const { data } = await pub
+    .schema("users")
+    .from("profiles")
+    .select("app_role")
+    .eq("id", user.id)
+    .maybeSingle();
+  return data?.app_role === "admin";
+}
+
+async function loadApprovedUrlaubEventIds(): Promise<Set<string>> {
+  const pub = publicServiceClient();
+  const { data, error } = await pub
+    .from("urlaub_requests")
+    .select("calendar_event_id")
+    .eq("status", "approved")
+    .not("calendar_event_id", "is", null);
+  if (error) throw error;
+  return new Set(
+    (data ?? [])
+      .map((r) => String(r.calendar_event_id || ""))
+      .filter(Boolean),
+  );
+}
+
+async function isApprovedUrlaubEvent(eventId: string): Promise<boolean> {
+  const pub = publicServiceClient();
+  const { data, error } = await pub
+    .from("urlaub_requests")
+    .select("id")
+    .eq("calendar_event_id", eventId)
+    .eq("status", "approved")
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data);
+}
+
 function systemBlockedResponse(c: Record<string, string>) {
   return new Response(JSON.stringify({ error: SYSTEM_BLOCK_MSG }), {
     status: 403,
@@ -132,7 +200,7 @@ function systemBlockedResponse(c: Record<string, string>) {
   });
 }
 
-function eventOut(e: EventRow) {
+function eventOut(e: EventRow, approvedUrlaubIds?: Set<string>) {
   return {
     id: e.id,
     member_id: e.member_id,
@@ -143,6 +211,7 @@ function eventOut(e: EventRow) {
     note: e.note,
     created_at: e.created_at,
     is_system: Boolean(e.is_system),
+    is_approved_urlaub: Boolean(approvedUrlaubIds?.has(e.id)),
     member_name: e.team_members?.name ?? null,
     member_kuerzel: e.team_members?.kuerzel ?? null,
   };
@@ -198,7 +267,8 @@ Deno.serve(async (req) => {
         .order("start_date", { ascending: true });
       if (error) throw error;
       const rows = (data ?? []) as EventRow[];
-      const flat = rows.map((e) => eventOut(e));
+      const approvedUrlaubIds = await loadApprovedUrlaubEventIds();
+      const flat = rows.map((e) => eventOut(e, approvedUrlaubIds));
       return new Response(JSON.stringify(flat), {
         status: 200,
         headers: { ...c, "Content-Type": "application/json" },
@@ -316,7 +386,9 @@ Deno.serve(async (req) => {
           return systemBlockedResponse(c);
         }
         if (existing.type === "urlaub" || type === "urlaub") {
-          return urlaubBlockedResponse(c);
+          const admin = await isRequestAdmin(req);
+          if (!admin) return urlaubBlockedResponse(c);
+          if (await isApprovedUrlaubEvent(id)) return approvedUrlaubBlockedResponse(c);
         }
         if (title.length < 1) {
           return new Response(JSON.stringify({ error: "title erforderlich" }), {
@@ -339,7 +411,8 @@ Deno.serve(async (req) => {
           .single();
         if (error) throw error;
         const e = data as EventRow;
-        return new Response(JSON.stringify(eventOut(e)), {
+        const approvedUrlaubIds = await loadApprovedUrlaubEventIds();
+        return new Response(JSON.stringify(eventOut(e, approvedUrlaubIds)), {
           status: 200,
           headers: { ...c, "Content-Type": "application/json" },
         });
@@ -403,7 +476,8 @@ Deno.serve(async (req) => {
         });
       }
       if (type === "urlaub") {
-        return urlaubBlockedResponse(c);
+        const admin = await isRequestAdmin(req);
+        if (!admin) return urlaubBlockedResponse(c);
       }
       const { data, error } = await supa
         .from("events")
@@ -412,7 +486,8 @@ Deno.serve(async (req) => {
         .single();
       if (error) throw error;
       const e = data as EventRow;
-      return new Response(JSON.stringify(eventOut(e)), {
+      const approvedUrlaubIds = await loadApprovedUrlaubEventIds();
+      return new Response(JSON.stringify(eventOut(e, approvedUrlaubIds)), {
         status: 201,
         headers: { ...c, "Content-Type": "application/json" },
       });
@@ -458,7 +533,9 @@ Deno.serve(async (req) => {
         return systemBlockedResponse(c);
       }
       if (evRow?.type === "urlaub") {
-        return urlaubBlockedResponse(c);
+        const admin = await isRequestAdmin(req);
+        if (!admin) return urlaubBlockedResponse(c);
+        if (await isApprovedUrlaubEvent(id)) return approvedUrlaubBlockedResponse(c);
       }
       const { error } = await supa.from("events").delete().eq("id", id);
       if (error) throw error;

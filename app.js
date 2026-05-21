@@ -9,6 +9,7 @@ import {
   insertEvent,
   updateEvent,
   deleteEventById,
+  initTeamKalenderApi,
 } from "./supabase-events.js";
 
 const TYPE_LABELS = {
@@ -35,6 +36,7 @@ let nrwHolidayRows = [];
 let currentMemberId = null;
 let currentMemberName = "";
 let currentMemberKuerzel = "";
+let isAdminUser = false;
 let draftEventId = null;
 let saveBusy = false;
 
@@ -107,12 +109,24 @@ function memberKuerzel() {
   return deriveKuerzel(currentMemberName, currentMemberKuerzel);
 }
 
+function refreshAdminState() {
+  isAdminUser = window.RootsUser?._p?.app_role === "admin";
+}
+
+function isApprovedUrlaubEntry(row) {
+  return Boolean(row?.type === "urlaub" && row?.is_approved_urlaub);
+}
+
 function isSystemEntry(row) {
   return Boolean(row?.is_system || String(row?.note || "").includes("AUTO:roots_closure"));
 }
 
 function isReadOnlyEntry(row) {
-  return Boolean(row && (row.type === "urlaub" || isSystemEntry(row)));
+  if (!row) return false;
+  if (isSystemEntry(row)) return true;
+  if (isApprovedUrlaubEntry(row)) return true;
+  if (row.type === "urlaub" && !isAdminUser) return true;
+  return false;
 }
 
 function toast(msg, kind = "ok") {
@@ -208,7 +222,8 @@ function updateSonstigesFieldVisibility() {
 
 function updateDoneButton() {
   if (!els.btnDone) return;
-  const ready = isEntryReady() && els.formType?.value !== "urlaub";
+  const type = els.formType?.value || "";
+  const ready = isEntryReady() && (type !== "urlaub" || isAdminUser);
   els.btnDone.disabled = !ready;
   els.btnDone.textContent = draftEventId ? "Speichern" : "Hinzufügen";
 }
@@ -350,7 +365,7 @@ function closeModal(ov) {
 
 function setFormTypeValue(type) {
   if (!els.formType) return;
-  if (type === "urlaub") {
+  if (type === "urlaub" && !isAdminUser) {
     showUrlaubNotice(
       true,
       `<i class="fa-solid fa-circle-info" aria-hidden="true"></i> ${URLAUB_BLOCK_MSG}`,
@@ -370,6 +385,7 @@ function setFormTypeValue(type) {
     });
   }
   updateSonstigesFieldVisibility();
+  updateDoneButton();
 }
 
 function scheduleAutosave() {
@@ -380,7 +396,7 @@ async function persistEntry() {
   if (!currentMemberId || saveBusy) return false;
   if (!isEntryReady()) return false;
   const { title, type, start_date, end_date, note } = readFormPayload();
-  if (type === "urlaub") {
+  if (type === "urlaub" && !isAdminUser) {
     toast(URLAUB_BLOCK_MSG, "err");
     showUrlaubNotice(true, `<i class="fa-solid fa-circle-info" aria-hidden="true"></i> ${URLAUB_BLOCK_MSG}`);
     return false;
@@ -523,6 +539,7 @@ async function resolveCurrentMember() {
   currentMemberId = m.id;
   currentMemberName = name;
   currentMemberKuerzel = m.kuerzel || ru._p.kuerzel || deriveKuerzel(name);
+  refreshAdminState();
   updateSonstigesFieldVisibility();
 }
 
@@ -546,6 +563,17 @@ async function reloadEvents() {
 }
 
 async function init() {
+  initTeamKalenderApi({
+    getAccessToken: async () => {
+      const sb = window.RootsUser?._sb;
+      if (!sb) return null;
+      const {
+        data: { session },
+      } = await sb.auth.getSession();
+      return session?.access_token || null;
+    },
+  });
+
   els.cal = document.getElementById("calendar");
   els.toast = document.getElementById("toast-container");
   els.modalOvl = document.getElementById("modal-create");
@@ -582,7 +610,7 @@ async function init() {
     els.formTypeChips.addEventListener("click", (e) => {
       const btn = e.target && e.target.closest(".entry-type-card[data-type]");
       if (!btn) return;
-      if (btn.getAttribute("data-block-urlaub") === "1" || btn.getAttribute("data-type") === "urlaub") {
+      if (btn.getAttribute("data-type") === "urlaub" && !isAdminUser) {
         setFormTypeValue("urlaub");
         return;
       }
@@ -607,7 +635,7 @@ async function init() {
   }
   if (els.btnDone) {
     els.btnDone.addEventListener("click", async () => {
-      if (!isEntryReady() || els.formType?.value === "urlaub") return;
+      if (!isEntryReady() || (els.formType?.value === "urlaub" && !isAdminUser)) return;
       const ok = await persistEntry();
       if (ok) closeModal(els.modalOvl);
     });
@@ -742,7 +770,7 @@ async function init() {
     els.btnDeleteEntry.addEventListener("click", async () => {
       if (!draftEventId) return;
       const row = dbRows.find((r) => r.id === draftEventId);
-      if (row?.type === "urlaub" || isSystemEntry(row)) {
+      if (isReadOnlyEntry(row)) {
         toast("Dieser Eintrag kann hier nicht bearbeitet werden", "err");
         openEntryModal(null, row);
         return;
@@ -763,6 +791,7 @@ async function init() {
   els.search.addEventListener("input", applySearch);
 
   document.addEventListener("roots-profile-ready", () => {
+    refreshAdminState();
     resolveCurrentMember().catch((e) => {
       console.error(e);
       toast(e.message || "Profil konnte nicht geladen werden", "err");

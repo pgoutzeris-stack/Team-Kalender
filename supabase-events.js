@@ -3,6 +3,16 @@
  */
 import { TEAM_KALENDER_API_URL } from "./config.js";
 
+/** @type {() => Promise<string|null>} */
+let getAccessToken = async () => null;
+
+/** @param {{ getAccessToken?: () => Promise<string|null> }} opts */
+export function initTeamKalenderApi(opts = {}) {
+  if (typeof opts.getAccessToken === "function") {
+    getAccessToken = opts.getAccessToken;
+  }
+}
+
 /**
  * @param {string} method
  * @param {string} [pathAndQuery] z. B. "" oder "?list=members"
@@ -12,9 +22,13 @@ async function apiJson(method, pathAndQuery, body) {
   const u = pathAndQuery
     ? `${TEAM_KALENDER_API_URL}${String(pathAndQuery).startsWith("?") ? pathAndQuery : `?${pathAndQuery}`}`
     : TEAM_KALENDER_API_URL;
+  const headers = { "Content-Type": "application/json" };
+  const token = await getAccessToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   const r = await fetch(u, {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers,
     body:
       method === "GET" || method === "DELETE"
         ? undefined
@@ -56,7 +70,7 @@ export async function ensureMemberForUser(userId, name) {
 }
 
 /**
- * @param {{ member_id: string, type: string, start_date: string, end_date: string, note?: string | null }} row
+ * @param {{ member_id: string, type: string, start_date: string, end_date: string, note?: string | null, title?: string }} row
  */
 export async function insertEvent(row) {
   return await apiJson("POST", "", { kind: "event", ...row });
@@ -64,7 +78,7 @@ export async function insertEvent(row) {
 
 /**
  * @param {string} id
- * @param {{ type: string, start_date: string, end_date: string, note?: string | null }} row
+ * @param {{ type: string, start_date: string, end_date: string, note?: string | null, title?: string }} row
  */
 export async function updateEvent(id, row) {
   return await apiJson("POST", "", { kind: "event_update", id, ...row });
