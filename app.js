@@ -344,12 +344,8 @@ function normalizeSearchText(value = "") {
     .trim();
 }
 
-function getEventSearchHaystack(event) {
-  const p = event.extendedProps || {};
-  const typeLabel = TYPE_LABELS[p.type] || p.type || "";
-  return normalizeSearchText(
-    [p.entryTitle, p.name, event.title, p.note, typeLabel, p.type].filter(Boolean).join(" "),
-  );
+function getEventEntryTitle(event) {
+  return normalizeSearchText(event.title || event.extendedProps?.entryTitle || "");
 }
 
 function eventMatchesSearch(event, query) {
@@ -358,8 +354,8 @@ function eventMatchesSearch(event, query) {
   if (event.id && String(event.id).startsWith("nrw-")) return false;
   const tokens = q.split(/\s+/).filter(Boolean);
   if (!tokens.length) return true;
-  const hay = getEventSearchHaystack(event);
-  return tokens.every((token) => hay.includes(token));
+  const title = getEventEntryTitle(event);
+  return tokens.every((token) => title.includes(token));
 }
 
 function eachDateInInclusiveRange(startYmd, endYmd) {
@@ -392,8 +388,6 @@ function rebuildSearchState() {
     searchMatches.push({
       rowId: p.rowId,
       title: event.title || p.entryTitle || "Eintrag",
-      name: p.name || "",
-      type: p.type || "",
       startD: p.startD,
       endD: p.endD,
     });
@@ -426,7 +420,7 @@ function renderSearchSpotlight() {
     .map(
       (m, idx) => `<button type="button" class="tk-spotlight-item" data-spotlight-idx="${idx}">
         <span class="tk-spotlight-item__title">${escapeHtml(m.title)}</span>
-        <span class="tk-spotlight-item__meta">${escapeHtml(m.name || "—")} · ${escapeHtml(formatDateRangeShort(m.startD, m.endD))}</span>
+        <span class="tk-spotlight-item__meta">${escapeHtml(formatDateRangeShort(m.startD, m.endD))}</span>
       </button>`,
     )
     .join("")}`;
@@ -821,12 +815,14 @@ async function init() {
       return calendarEventContent(arg);
     },
     eventClassNames(arg) {
-      if (!searchQuery.trim() || arg.event.extendedProps?.source !== "db") return [];
-      return eventMatchesSearch(arg.event, searchQuery) ? ["tk-search-hit"] : ["tk-search-dim"];
+      if (!searchQuery.trim()) return [];
+      if (arg.event.extendedProps?.source !== "db") return ["tk-search-dim"];
+      return eventMatchesSearch(arg.event, searchQuery) ? [] : ["tk-search-dim"];
     },
     dayCellClassNames(arg) {
       if (!searchQuery.trim()) return [];
-      return spotlightDates.has(toYmd(arg.date)) ? ["tk-spotlight-day"] : [];
+      const ymd = toYmd(arg.date);
+      return spotlightDates.has(ymd) ? ["tk-spotlight-day"] : ["tk-search-dim-day"];
     },
     eventClick(info) {
       info.jsEvent.preventDefault();
