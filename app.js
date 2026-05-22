@@ -30,6 +30,10 @@ const TYPE_COLORS = {
 let calendar = null;
 let dbRows = [];
 let searchQuery = "";
+let searchMatches = [];
+/** @type {Set<string>} */
+let spotlightDates = new Set();
+let searchRenderTimer = null;
 /** @type {Set<string>} */
 let nrwDateSet = new Set();
 let nrwHolidayRows = [];
@@ -66,6 +70,7 @@ const els = {
   entryFormMain: null,
   formTypeRow: null,
   btnOpenUrlaubsplanung: null,
+  searchSpotlight: null,
 };
 
 const URLAUB_BLOCK_MSG =
@@ -331,24 +336,132 @@ function calendarEventContent(arg) {
   return nrwEventContent(arg) || entryEventContent(arg);
 }
 
+function normalizeSearchText(value = "") {
+  return String(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function getEventSearchHaystack(event) {
+  const p = event.extendedProps || {};
+  const typeLabel = TYPE_LABELS[p.type] || p.type || "";
+  return normalizeSearchText(
+    [p.entryTitle, p.name, event.title, p.note, typeLabel, p.type].filter(Boolean).join(" "),
+  );
+}
+
+function eventMatchesSearch(event, query) {
+  const q = normalizeSearchText(query);
+  if (!q) return true;
+  if (event.id && String(event.id).startsWith("nrw-")) return false;
+  const tokens = q.split(/\s+/).filter(Boolean);
+  if (!tokens.length) return true;
+  const hay = getEventSearchHaystack(event);
+  return tokens.every((token) => hay.includes(token));
+}
+
+function eachDateInInclusiveRange(startYmd, endYmd) {
+  const out = [];
+  if (!startYmd || !endYmd) return out;
+  const cur = new Date(`${startYmd}T12:00:00`);
+  const end = new Date(`${endYmd}T12:00:00`);
+  if (Number.isNaN(cur.getTime()) || Number.isNaN(end.getTime())) return out;
+  while (cur <= end) {
+    out.push(toYmd(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+}
+
+function formatDateRangeShort(startD, endD) {
+  if (!startD) return "—";
+  if (!endD || endD === startD) return formatYmdDe(startD);
+  return `${formatYmdDe(startD)} – ${formatYmdDe(endD)}`;
+}
+
+function rebuildSearchState() {
+  spotlightDates = new Set();
+  searchMatches = [];
+  if (!calendar || !searchQuery) return;
+  calendar.getEvents().forEach((event) => {
+    if (event.id && String(event.id).startsWith("nrw-")) return;
+    if (!eventMatchesSearch(event, searchQuery)) return;
+    const p = event.extendedProps || {};
+    searchMatches.push({
+      rowId: p.rowId,
+      title: event.title || p.entryTitle || "Eintrag",
+      name: p.name || "",
+      type: p.type || "",
+      startD: p.startD,
+      endD: p.endD,
+    });
+    eachDateInInclusiveRange(p.startD, p.endD).forEach((ymd) => spotlightDates.add(ymd));
+  });
+  searchMatches.sort((a, b) => {
+    if (a.startD !== b.startD) return a.startD.localeCompare(b.startD);
+    return (a.title || "").localeCompare(b.title || "", "de");
+  });
+}
+
+function renderSearchSpotlight() {
+  const panel = els.searchSpotlight;
+  if (!panel) return;
+  const q = searchQuery.trim();
+  if (!q) {
+    panel.hidden = true;
+    panel.innerHTML = "";
+    els.search?.setAttribute("aria-expanded", "false");
+    return;
+  }
+  els.search?.setAttribute("aria-expanded", "true");
+  panel.hidden = false;
+  if (searchMatches.length === 0) {
+    panel.innerHTML = `<div class="tk-spotlight-empty">Keine Treffer für „${escapeHtml(q)}“</div>`;
+    return;
+  }
+  const countLabel = searchMatches.length === 1 ? "1 Treffer" : `${searchMatches.length} Treffer`;
+  panel.innerHTML = `<div class="tk-spotlight-head">${escapeHtml(countLabel)}</div>${searchMatches
+    .map(
+      (m, idx) => `<button type="button" class="tk-spotlight-item" data-spotlight-idx="${idx}">
+        <span class="tk-spotlight-item__title">${escapeHtml(m.title)}</span>
+        <span class="tk-spotlight-item__meta">${escapeHtml(m.name || "—")} · ${escapeHtml(formatDateRangeShort(m.startD, m.endD))}</span>
+      </button>`,
+    )
+    .join("")}`;
+}
+
+function refreshSearchVisuals() {
+  if (!calendar) return;
+  rebuildSearchState();
+  renderSearchSpotlight();
+  if (els.cal) els.cal.classList.toggle("tk-search-active", Boolean(searchQuery.trim()));
+  calendar.render();
+}
+
 function applySearch() {
   if (!calendar) return;
-  const q = (els.search.value || "").trim().toLowerCase();
-  searchQuery = q;
-  calendar.getEvents().forEach((e) => {
-    if (e.id && String(e.id).startsWith("nrw-")) return;
-    const hay = [
-      e.extendedProps.entryTitle,
-      e.extendedProps.name,
-      e.title,
-      e.extendedProps.note,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    const vis = !q || hay.includes(q);
-    e.setProp("display", vis ? "auto" : "none");
+  searchQuery = (els.search?.value || "").trim();
+  clearTimeout(searchRenderTimer);
+  searchRenderTimer = setTimeout(refreshSearchVisuals, 120);
+}
+
+function focusSpotlightMatch(idx) {
+  const match = searchMatches[idx];
+  if (!match || !calendar) return;
+  calendar.gotoDate(match.startD);
+  refreshSearchVisuals();
+  requestAnimationFrame(() => {
+    const cell = els.cal?.querySelector(`.fc-daygrid-day[data-date="${match.startD}"]`);
+    cell?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   });
+}
+
+function closeSearchSpotlight() {
+  if (!els.searchSpotlight) return;
+  els.searchSpotlight.hidden = true;
+  els.search?.setAttribute("aria-expanded", "false");
 }
 
 function closeModal(ov) {
@@ -548,7 +661,7 @@ function rebuildDbEvents() {
   const events = (dbRows || []).map(rowToFcEvent);
   calendar.getEvents().filter((e) => e.id && String(e.id).startsWith("db-")).forEach((e) => e.remove());
   events.forEach((e) => calendar.addEvent(e));
-  applySearch();
+  refreshSearchVisuals();
 }
 
 function rebuildNrwEvents() {
@@ -590,6 +703,7 @@ async function init() {
   els.btnDeleteEntry = document.getElementById("btn-delete-entry");
   els.btnDone = document.getElementById("m-done");
   els.search = document.getElementById("header-search");
+  els.searchSpotlight = document.getElementById("search-spotlight");
   els.btnCreate = document.getElementById("btn-new-entry");
   els.btnViewMonth = document.getElementById("view-month");
   els.btnViewWeek = document.getElementById("view-week");
@@ -706,6 +820,14 @@ async function init() {
     eventContent(arg) {
       return calendarEventContent(arg);
     },
+    eventClassNames(arg) {
+      if (!searchQuery.trim() || arg.event.extendedProps?.source !== "db") return [];
+      return eventMatchesSearch(arg.event, searchQuery) ? ["tk-search-hit"] : ["tk-search-dim"];
+    },
+    dayCellClassNames(arg) {
+      if (!searchQuery.trim()) return [];
+      return spotlightDates.has(toYmd(arg.date)) ? ["tk-spotlight-day"] : [];
+    },
     eventClick(info) {
       info.jsEvent.preventDefault();
       if (String(info.event.id).startsWith("nrw-")) {
@@ -731,7 +853,7 @@ async function init() {
       info.view.calendar.unselect();
     },
     datesSet() {
-      applySearch();
+      rebuildSearchState();
       syncViewButtons();
     },
   });
@@ -809,6 +931,28 @@ async function init() {
   }
 
   els.search.addEventListener("input", applySearch);
+  els.search.addEventListener("focus", () => {
+    if (searchQuery.trim()) renderSearchSpotlight();
+  });
+  els.searchSpotlight?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-spotlight-idx]");
+    if (!btn) return;
+    focusSpotlightMatch(parseInt(btn.dataset.spotlightIdx, 10));
+  });
+  document.addEventListener("click", (e) => {
+    if (!els.search?.contains(e.target) && !els.searchSpotlight?.contains(e.target)) {
+      closeSearchSpotlight();
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && document.activeElement === els.search) {
+      els.search.value = "";
+      searchQuery = "";
+      refreshSearchVisuals();
+      closeSearchSpotlight();
+      els.search.blur();
+    }
+  });
 
   document.addEventListener("roots-profile-ready", () => {
     refreshAdminState();
