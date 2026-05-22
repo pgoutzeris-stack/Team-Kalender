@@ -335,11 +335,71 @@
       opacity: 1;
       filter: none;
       background: transparent;
-      box-shadow: inset 0 0 0 2px var(--brand);
-      border-radius: 8px;
+      box-shadow: none;
     }
-    .fc .fc-multimonth .fc-daygrid-day.tk-spotlight-day .fc-daygrid-day-frame {
-      border-radius: 6px;
+    .tk-search-active .fc-daygrid-day.tk-spotlight-day .fc-daygrid-day-number {
+      box-shadow: 0 0 0 2px var(--brand) !important;
+      color: var(--brand) !important;
+      background: transparent !important;
+    }
+    .tk-search-active .fc-daygrid-day.tk-spotlight-day.fc-day-today .fc-daygrid-day-number {
+      background: var(--brand) !important;
+      color: #fff !important;
+      box-shadow: 0 0 0 2px var(--brand-dark) !important;
+    }
+    .tk-member-filter { margin-bottom: .75rem; }
+    .tk-member-filter-actions {
+      display: flex;
+      gap: .35rem;
+      padding: 0 .85rem .45rem;
+    }
+    .tk-member-filter-btn {
+      border: 1px solid var(--line);
+      background: var(--bg);
+      color: var(--muted);
+      font-size: .72rem;
+      font-weight: 600;
+      padding: .28rem .55rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .tk-member-filter-btn:hover {
+      background: var(--brand-light);
+      color: var(--brand);
+      border-color: var(--brand);
+    }
+    .tk-member-filter-list {
+      display: flex;
+      flex-direction: column;
+      gap: .15rem;
+      max-height: 220px;
+      overflow-y: auto;
+      padding: 0 .55rem .35rem;
+    }
+    .tk-member-filter-item {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      padding: .45rem .55rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: .84rem;
+      color: var(--ink);
+    }
+    .tk-member-filter-item:hover { background: var(--brand-light); }
+    .tk-member-filter-check {
+      width: 15px;
+      height: 15px;
+      accent-color: var(--brand);
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .tk-member-filter-empty {
+      font-size: .78rem;
+      color: var(--muted);
+      padding: .35rem .85rem;
+      margin: 0;
     }
     .dash-content { flex: 1; overflow-y: auto; padding: 1rem 1.5rem 1.5rem; min-height: 0; }
     .btn-primary {
@@ -1289,6 +1349,14 @@
           <button type="button" class="dash-nav-item" id="view-year" aria-pressed="false">
             <i class="fa-solid fa-calendar-days"></i> Jahr
           </button>
+          <div class="dash-nav-section">Personen</div>
+          <div class="tk-member-filter" id="member-filter">
+            <div class="tk-member-filter-actions">
+              <button type="button" class="tk-member-filter-btn" id="member-select-all">Alle</button>
+              <button type="button" class="tk-member-filter-btn" id="member-select-none">Keine</button>
+            </div>
+            <div class="tk-member-filter-list" id="member-filter-list" role="group" aria-label="Personen filtern"></div>
+          </div>
           <div class="tk-legend" aria-label="Legende">
             <span class="tk-legend-title">Legende</span>
             <span class="tk-legend-item"><span class="tk-legend-swatch tk-legend-swatch--urlaub"></span> Urlaub</span>

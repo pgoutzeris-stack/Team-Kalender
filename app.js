@@ -4,6 +4,7 @@
 import { TEAM_KALENDER_API_URL } from "./config.js";
 import {
   fetchAllEvents,
+  fetchTeamMembers,
   fetchNrwHolidays,
   ensureMemberForUser,
   insertEvent,
@@ -43,6 +44,9 @@ let currentMemberKuerzel = "";
 let isAdminUser = false;
 let draftEventId = null;
 let saveBusy = false;
+let teamMembers = [];
+/** @type {Set<string>} */
+let selectedMemberIds = new Set();
 
 const els = {
   cal: null,
@@ -71,6 +75,9 @@ const els = {
   formTypeRow: null,
   btnOpenUrlaubsplanung: null,
   searchSpotlight: null,
+  memberFilterList: null,
+  memberSelectAll: null,
+  memberSelectNone: null,
 };
 
 const URLAUB_BLOCK_MSG =
@@ -330,6 +337,51 @@ function entryEventContent(arg) {
   span.className = "tk-entry-tag";
   span.textContent = arg.event.title || "Eintrag";
   return { domNodes: [span] };
+}
+
+function membersFromEventRows(rows) {
+  const map = new Map();
+  (rows || []).forEach((row) => {
+    if (!row?.member_id || map.has(row.member_id)) return;
+    map.set(row.member_id, { id: row.member_id, name: row.member_name || "Unbekannt" });
+  });
+  return [...map.values()].sort((a, b) => (a.name || "").localeCompare(b.name || "", "de"));
+}
+
+function initMemberFilter(members) {
+  teamMembers = Array.isArray(members) ? members : [];
+  selectedMemberIds = new Set(teamMembers.map((m) => m.id));
+  renderMemberFilterList();
+}
+
+function renderMemberFilterList() {
+  const list = els.memberFilterList;
+  if (!list) return;
+  if (!teamMembers.length) {
+    list.innerHTML = `<p class="tk-member-filter-empty">Keine Personen geladen</p>`;
+    return;
+  }
+  list.innerHTML = teamMembers
+    .map((member) => {
+      const checked = selectedMemberIds.has(member.id);
+      return `<label class="tk-member-filter-item">
+        <input type="checkbox" class="tk-member-filter-check" value="${escapeHtml(member.id)}"${checked ? " checked" : ""}>
+        <span>${escapeHtml(member.name || "Unbekannt")}</span>
+      </label>`;
+    })
+    .join("");
+}
+
+function getVisibleDbRows() {
+  if (selectedMemberIds.size === 0) return [];
+  return (dbRows || []).filter((row) => selectedMemberIds.has(row.member_id));
+}
+
+function setAllMembersSelected(selected) {
+  if (selected) selectedMemberIds = new Set(teamMembers.map((m) => m.id));
+  else selectedMemberIds = new Set();
+  renderMemberFilterList();
+  rebuildDbEvents();
 }
 
 function calendarEventContent(arg) {
@@ -652,7 +704,7 @@ async function resolveCurrentMember() {
 
 function rebuildDbEvents() {
   if (!calendar) return;
-  const events = (dbRows || []).map(rowToFcEvent);
+  const events = getVisibleDbRows().map(rowToFcEvent);
   calendar.getEvents().filter((e) => e.id && String(e.id).startsWith("db-")).forEach((e) => e.remove());
   events.forEach((e) => calendar.addEvent(e));
   refreshSearchVisuals();
@@ -698,6 +750,9 @@ async function init() {
   els.btnDone = document.getElementById("m-done");
   els.search = document.getElementById("header-search");
   els.searchSpotlight = document.getElementById("search-spotlight");
+  els.memberFilterList = document.getElementById("member-filter-list");
+  els.memberSelectAll = document.getElementById("member-select-all");
+  els.memberSelectNone = document.getElementById("member-select-none");
   els.btnCreate = document.getElementById("btn-new-entry");
   els.btnViewMonth = document.getElementById("view-month");
   els.btnViewWeek = document.getElementById("view-week");
@@ -759,10 +814,15 @@ async function init() {
 
   try {
     await resolveCurrentMember();
-    const [ev, nrw] = await Promise.all([fetchAllEvents(), fetchNrwHolidays()]);
+    const [ev, nrw, members] = await Promise.all([
+      fetchAllEvents(),
+      fetchNrwHolidays(),
+      fetchTeamMembers().catch(() => null),
+    ]);
     dbRows = ev || [];
     nrwHolidayRows = nrw || [];
     nrwDateSet = new Set(nrwHolidayRows.map((h) => h.holiday_date));
+    initMemberFilter(Array.isArray(members) && members.length ? members : membersFromEventRows(dbRows));
   } catch (e) {
     console.error(e);
     toast("API: " + (e.message || "Fehler beim Laden"), "err");
@@ -927,6 +987,15 @@ async function init() {
   }
 
   els.search.addEventListener("input", applySearch);
+  els.memberFilterList?.addEventListener("change", (e) => {
+    const cb = e.target.closest(".tk-member-filter-check");
+    if (!cb) return;
+    if (cb.checked) selectedMemberIds.add(cb.value);
+    else selectedMemberIds.delete(cb.value);
+    rebuildDbEvents();
+  });
+  els.memberSelectAll?.addEventListener("click", () => setAllMembersSelected(true));
+  els.memberSelectNone?.addEventListener("click", () => setAllMembersSelected(false));
   els.search.addEventListener("focus", () => {
     if (searchQuery.trim()) renderSearchSpotlight();
   });

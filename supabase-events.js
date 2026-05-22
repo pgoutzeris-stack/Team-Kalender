@@ -50,6 +50,11 @@ async function apiJson(method, pathAndQuery, body) {
   return j;
 }
 
+/** @returns {Promise<Array<{id:string,name:string,user_id:string|null,created_at:string}>>} */
+export async function fetchTeamMembers() {
+  return (await apiJson("GET", "?list=members", null)) || [];
+}
+
 /** @returns {Promise<Array>} */
 export async function fetchAllEvents() {
   return (await apiJson("GET", "", null)) || [];
