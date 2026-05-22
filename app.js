@@ -686,9 +686,21 @@ async function init() {
     unselectAuto: true,
     dayMaxEvents: 6,
     weekNumbers: false,
+    showNonCurrentDates: false,
+    fixedWeekCount: true,
+    moreLinkText(n) {
+      return n === 1 ? "+1 weitere" : `+${n} weitere`;
+    },
     views: {
-      dayGridWeek: { dayMaxEvents: 8 },
-      multiMonthYear: { multiMonthMaxColumns: 3, multiMonthMinWidth: 200, dayMaxEvents: 3 },
+      dayGridMonth: { showNonCurrentDates: false, fixedWeekCount: true },
+      dayGridWeek: { dayMaxEvents: 8, showNonCurrentDates: true },
+      multiMonthYear: {
+        multiMonthMaxColumns: 3,
+        multiMonthMinWidth: 200,
+        dayMaxEvents: 3,
+        showNonCurrentDates: false,
+        fixedWeekCount: true,
+      },
     },
     buttonText: { today: "Heute" },
     eventContent(arg) {
