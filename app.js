@@ -928,6 +928,48 @@ function rowToVevent(row) {
 /**
  * Wrap VEVENTs in a VCALENDAR and trigger browser download.
  */
+/* ─── Urlaubskontingent Sidebar ──────────────────────────────── */
+async function loadAndRenderQuota() {
+  const panel = document.getElementById("tk-quota-panel");
+  const list  = document.getElementById("tk-quota-list");
+  if (!panel || !list) return;
+
+  // Nur für Manager/Admins anzeigen
+  const role = window.RootsUser?._p?.app_role;
+  if (!role || role === "reader") return;
+
+  const data = await fetchQuota();
+  if (!data || !data.length) return;
+
+  list.innerHTML = data.map((q) => {
+    const pct_betrieb = Math.round((q.betrieb / q.initial) * 100);
+    const pct_used    = Math.round((q.used    / q.initial) * 100);
+    const pct_remain  = Math.round((q.remaining / q.initial) * 100);
+    const firstName   = (q.full_name || "").split(" ")[0];
+    return `
+      <div class="tk-quota-row" title="${escapeHtml(q.full_name)}: ${q.remaining} von ${q.initial} Tagen verbleibend">
+        <div class="tk-quota-name">${escapeHtml(firstName)}</div>
+        <div class="tk-quota-bar-wrap">
+          <div class="tk-quota-bar tk-quota-bar--betrieb" style="width:${pct_betrieb + pct_used}%"></div>
+          <div class="tk-quota-bar tk-quota-bar--used"    style="width:${pct_used}%"></div>
+        </div>
+        <div class="tk-quota-meta">
+          <span>${q.used}d Urlaub · ${q.betrieb}d Betrieb</span>
+          <span class="tk-quota-remaining">${q.remaining}/${q.initial}</span>
+        </div>
+      </div>`;
+  }).join("");
+
+  panel.hidden = false;
+}
+
+async function fetchQuota() {
+  try {
+    const data = await apiJson("GET", "?list=quota", null);
+    return data || [];
+  } catch { return []; }
+}
+
 function downloadIcs(vevents, filename) {
   const cal = [
     "BEGIN:VCALENDAR",
@@ -1166,6 +1208,8 @@ if (els.formTypeChips) {
     nrwHolidayRows = nrw || [];
     nrwDateSet = new Set(nrwHolidayRows.map((h) => h.holiday_date));
     initMemberFilter(Array.isArray(members) && members.length ? members : membersFromEventRows(dbRows));
+    // Urlaubskontingent-Anzeige (nur für Admins/Editoren sichtbar)
+    loadAndRenderQuota().catch(() => {});
   } catch (e) {
     console.error(e);
     toast("API: " + (e.message || "Fehler beim Laden"), "err");
