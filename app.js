@@ -398,17 +398,25 @@ function entryEventContent(arg) {
   return { domNodes: [span] };
 }
 
+// Filtert System-Mitglieder (kein user_id = interne Einträge wie ROOTS/Betriebsferien)
+function isRealMember(m) {
+  if (!m) return false;
+  if (!m.user_id && m.name === "ROOTS") return false; // ROOTS-Systemmitglied ausschließen
+  return true;
+}
+
 function membersFromEventRows(rows) {
   const map = new Map();
   (rows || []).forEach((row) => {
     if (!row?.member_id || map.has(row.member_id)) return;
+    if (row.member_name === "ROOTS") return; // ROOTS-Betriebsferien-Einträge überspringen
     map.set(row.member_id, { id: row.member_id, name: row.member_name || "Unbekannt" });
   });
   return [...map.values()].sort((a, b) => (a.name || "").localeCompare(b.name || "", "de"));
 }
 
 function initMemberFilter(members) {
-  teamMembers = Array.isArray(members) ? members : [];
+  teamMembers = (Array.isArray(members) ? members : []).filter(isRealMember);
   selectedMemberIds = new Set(teamMembers.map((m) => m.id));
   renderMemberFilterList();
 }
