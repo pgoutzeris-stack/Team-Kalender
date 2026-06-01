@@ -66,6 +66,69 @@ function publicServiceClient() {
   });
 }
 
+/** ──────────────────────────────────────────────────────────────────────
+ *  Urlaubstage-Berechnung
+ *  Zählt Arbeitstage (Mo–Fr) zwischen zwei Daten inkl. beider Grenzen,
+ *  abzüglich NRW-Feiertage in der Tabelle team_kalender.nrw_holidays.
+ *  day_part 'am'/'pm' = 0,5 Tage statt 1.
+ * ─────────────────────────────────────────────────────────────────────── */
+async function countVacationDays(
+  startDate: string,
+  endDate: string,
+  dayPart: string,
+  supa: ReturnType<typeof serviceClient>,
+): Promise<number> {
+  const start = new Date(startDate + "T00:00:00Z");
+  const end   = new Date(endDate   + "T00:00:00Z");
+  if (end < start) return 0;
+
+  // NRW-Feiertage im Zeitraum holen
+  const { data: holidays } = await supa
+    .from("nrw_holidays")
+    .select("holiday_date")
+    .gte("holiday_date", startDate)
+    .lte("holiday_date", endDate);
+  const holidaySet = new Set((holidays ?? []).map((h: { holiday_date: string }) => h.holiday_date));
+
+  let days = 0;
+  const cur = new Date(start);
+  while (cur <= end) {
+    const dow = cur.getUTCDay(); // 0=So, 6=Sa
+    const ymd = cur.toISOString().slice(0, 10);
+    if (dow !== 0 && dow !== 6 && !holidaySet.has(ymd)) days++;
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+
+  // Halber Tag (Vormittag / Nachmittag) bei eintägigen Einträgen
+  if ((dayPart === "am" || dayPart === "pm") && startDate === endDate && days === 1) {
+    return 0.5;
+  }
+  return days;
+}
+
+/** Findet die user_id zu einer member_id */
+async function userIdForMember(
+  memberId: string,
+  supa: ReturnType<typeof serviceClient>,
+): Promise<string | null> {
+  const { data } = await supa
+    .from("team_members")
+    .select("user_id")
+    .eq("id", memberId)
+    .maybeSingle();
+  return data?.user_id ?? null;
+}
+
+/** Zieht Urlaubstage vom Profil ab (negativ = gutschreiben) */
+async function adjustUrlaubstage(
+  userId: string,
+  delta: number, // positiv = abziehen, negativ = gutschreiben
+): Promise<void> {
+  if (!userId || delta === 0) return;
+  const pub = publicServiceClient();
+  await pub.rpc("adjust_urlaubstage_by_delta", { p_user_id: userId, p_delta: delta });
+}
+
 async function syncRootsClosures(userId: string) {
   const pub = publicServiceClient();
   const { error } = await pub.rpc("sync_roots_closures_for_user", {
@@ -82,7 +145,6 @@ type EventRow = {
   title: string | null;
   start_date: string;
   end_date: string;
-  day_part: string | null;
   note: string | null;
   created_at: string;
   is_system: boolean;
@@ -202,7 +264,6 @@ function systemBlockedResponse(c: Record<string, string>) {
 }
 
 function eventOut(e: EventRow, approvedUrlaubIds?: Set<string>) {
-  const dayPart = e.day_part === "am" || e.day_part === "pm" ? e.day_part : "full";
   return {
     id: e.id,
     member_id: e.member_id,
@@ -210,7 +271,6 @@ function eventOut(e: EventRow, approvedUrlaubIds?: Set<string>) {
     title: e.title,
     start_date: e.start_date,
     end_date: e.end_date,
-    day_part: dayPart,
     note: e.note,
     created_at: e.created_at,
     is_system: Boolean(e.is_system),
@@ -218,12 +278,6 @@ function eventOut(e: EventRow, approvedUrlaubIds?: Set<string>) {
     member_name: e.team_members?.name ?? null,
     member_kuerzel: e.team_members?.kuerzel ?? null,
   };
-}
-
-function normalizeDayPart(value: unknown): "full" | "am" | "pm" {
-  const v = String(value ?? "full").trim().toLowerCase();
-  if (v === "am" || v === "pm") return v;
-  return "full";
 }
 
 Deno.serve(async (req) => {
@@ -272,7 +326,7 @@ Deno.serve(async (req) => {
 
       const { data, error } = await supa
         .from("events")
-        .select("id,member_id,type,title,start_date,end_date,day_part,note,created_at,is_system,team_members(name,kuerzel)")
+        .select("id,member_id,type,title,start_date,end_date,note,created_at,is_system,team_members(name,kuerzel)")
         .order("start_date", { ascending: true });
       if (error) throw error;
       const rows = (data ?? []) as EventRow[];
@@ -370,7 +424,6 @@ Deno.serve(async (req) => {
         const type = String(body.type ?? "");
         const start_date = String(body.start_date ?? "");
         const end_date = String(body.end_date ?? "");
-        const day_part = normalizeDayPart(body.day_part);
         const title = String(body.title ?? "").trim();
         const note =
           body.note == null || body.note === "" ? null : String(body.note);
@@ -380,15 +433,9 @@ Deno.serve(async (req) => {
             { status: 400, headers: { ...c, "Content-Type": "application/json" } },
           );
         }
-        if (day_part !== "full" && start_date !== end_date) {
-          return new Response(
-            JSON.stringify({ error: "Halbtage sind nur für einzelne Kalendertage möglich" }),
-            { status: 400, headers: { ...c, "Content-Type": "application/json" } },
-          );
-        }
         const { data: existing, error: loadErr } = await supa
           .from("events")
-          .select("id,type,is_system")
+          .select("id,type,start_date,end_date,day_part,member_id,is_system")
           .eq("id", id)
           .maybeSingle();
         if (loadErr) throw loadErr;
@@ -419,13 +466,30 @@ Deno.serve(async (req) => {
             headers: { ...c, "Content-Type": "application/json" },
           });
         }
+        const day_part_upd = String(body.day_part ?? existing?.day_part ?? "full");
         const { data, error } = await supa
           .from("events")
-          .update({ type, title, start_date, end_date, day_part, note })
+          .update({ type, title, start_date, end_date, note, day_part: day_part_upd })
           .eq("id", id)
-          .select("id,member_id,type,title,start_date,end_date,day_part,note,created_at,is_system,team_members(name,kuerzel)")
+          .select("id,member_id,type,title,start_date,end_date,note,day_part,created_at,is_system,team_members(name,kuerzel)")
           .single();
         if (error) throw error;
+
+        // Urlaubstage-Differenz anpassen
+        if ((existing?.type === "urlaub" || type === "urlaub") && existing?.member_id) {
+          const userId = await userIdForMember(existing.member_id, supa);
+          if (userId) {
+            const oldDays = existing.type === "urlaub"
+              ? await countVacationDays(existing.start_date, existing.end_date, existing.day_part ?? "full", supa)
+              : 0;
+            const newDays = type === "urlaub"
+              ? await countVacationDays(start_date, end_date, day_part_upd, supa)
+              : 0;
+            const delta = newDays - oldDays; // positiv = mehr Urlaub → abziehen, negativ → gutschreiben
+            await adjustUrlaubstage(userId, delta);
+          }
+        }
+
         const e = data as EventRow;
         const approvedUrlaubIds = await loadApprovedUrlaubEventIds();
         return new Response(JSON.stringify(eventOut(e, approvedUrlaubIds)), {
@@ -470,18 +534,11 @@ Deno.serve(async (req) => {
       const title = String(body.title ?? "").trim();
       const start_date = String(body.start_date ?? "");
       const end_date = String(body.end_date ?? "");
-      const day_part = normalizeDayPart(body.day_part);
       const note =
         body.note == null || body.note === "" ? null : String(body.note);
       if (!member_id || !start_date || !end_date) {
         return new Response(
           JSON.stringify({ error: "member_id, start_date, end_date erforderlich" }),
-          { status: 400, headers: { ...c, "Content-Type": "application/json" } },
-        );
-      }
-      if (day_part !== "full" && start_date !== end_date) {
-        return new Response(
-          JSON.stringify({ error: "Halbtage sind nur für einzelne Kalendertage möglich" }),
           { status: 400, headers: { ...c, "Content-Type": "application/json" } },
         );
       }
@@ -502,12 +559,23 @@ Deno.serve(async (req) => {
         const admin = await isRequestAdmin(req);
         if (!admin) return urlaubBlockedResponse(c);
       }
+      const day_part = String(body.day_part ?? "full");
       const { data, error } = await supa
         .from("events")
-        .insert({ member_id, type, title, start_date, end_date, day_part, note })
-        .select("id,member_id,type,title,start_date,end_date,day_part,note,created_at,is_system,team_members(name,kuerzel)")
+        .insert({ member_id, type, title, start_date, end_date, note, day_part })
+        .select("id,member_id,type,title,start_date,end_date,note,day_part,created_at,is_system,team_members(name,kuerzel)")
         .single();
       if (error) throw error;
+
+      // Urlaubstage abziehen wenn Admin direkt Urlaub einträgt
+      if (type === "urlaub") {
+        const userId = await userIdForMember(member_id, supa);
+        if (userId) {
+          const days = await countVacationDays(start_date, end_date, day_part, supa);
+          await adjustUrlaubstage(userId, days);
+        }
+      }
+
       const e = data as EventRow;
       const approvedUrlaubIds = await loadApprovedUrlaubEventIds();
       return new Response(JSON.stringify(eventOut(e, approvedUrlaubIds)), {
@@ -548,7 +616,7 @@ Deno.serve(async (req) => {
       }
       const { data: evRow, error: evLoadErr } = await supa
         .from("events")
-        .select("type,is_system")
+        .select("type,start_date,end_date,day_part,member_id,is_system")
         .eq("id", id)
         .maybeSingle();
       if (evLoadErr) throw evLoadErr;
@@ -562,6 +630,16 @@ Deno.serve(async (req) => {
       }
       const { error } = await supa.from("events").delete().eq("id", id);
       if (error) throw error;
+
+      // Urlaubstage zurückgeben wenn Admin-Urlaub gelöscht
+      if (evRow?.type === "urlaub" && evRow?.member_id) {
+        const userId = await userIdForMember(evRow.member_id, supa);
+        if (userId) {
+          const days = await countVacationDays(evRow.start_date, evRow.end_date, evRow.day_part ?? "full", supa);
+          await adjustUrlaubstage(userId, -days); // negativ = gutschreiben
+        }
+      }
+
       return new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { ...c, "Content-Type": "application/json" },
