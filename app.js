@@ -757,13 +757,19 @@ function downloadIcs(vevents, filename) {
   ].join("\r\n");
 
   const blob = new Blob([cal], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+  // Use bridge helper so downloads work inside the macOS iframe app too
+  const downloader = window.RootsUserBridge?.downloadBlob;
+  if (downloader) {
+    downloader(blob, filename);
+  } else {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+  }
 }
 
 /**
