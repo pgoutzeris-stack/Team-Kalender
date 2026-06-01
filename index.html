@@ -803,8 +803,10 @@
       display: flex;
       align-items: stretch;
       gap: 0.5rem;
+      min-width: 0;
     }
-    .entry-sheet__actions .btn-danger-ghost {
+    .entry-sheet__actions .btn-danger-ghost,
+    .entry-sheet__actions .btn-export-entry {
       height: 48px;
       padding: 0 1rem;
       border: 1px solid var(--line);
@@ -815,9 +817,17 @@
       font-weight: 600;
       cursor: pointer;
       font-family: var(--font-ui);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      flex: 0 0 auto;
     }
+    .entry-sheet__actions .btn-export-entry { color: var(--brand); }
+    .entry-sheet__actions .btn-export-entry:hover { background: var(--brand-light); border-color: rgba(32, 110, 251, .25); }
     .entry-sheet__actions .btn-revision {
       flex: 1;
+      min-width: 0;
       height: 48px;
       justify-content: center;
       border-radius: 14px;
@@ -826,6 +836,7 @@
     }
     .entry-sheet__actions .btn-done {
       flex: 1;
+      min-width: 0;
       height: 48px;
       border: none;
       border-radius: 14px;
@@ -851,6 +862,75 @@
       cursor: not-allowed;
       box-shadow: none;
     }
+    @media (max-width: 430px) {
+      .entry-sheet__actions { gap: .4rem; }
+      .entry-sheet__actions .btn-danger-ghost,
+      .entry-sheet__actions .btn-export-entry {
+        width: 48px;
+        padding: 0;
+      }
+      .entry-sheet__actions .btn-danger-ghost .btn-label,
+      .entry-sheet__actions .btn-export-entry .btn-label {
+        display: none;
+      }
+      .entry-sheet__actions .btn-revision,
+      .entry-sheet__actions .btn-done {
+        padding-left: .7rem;
+        padding-right: .7rem;
+      }
+    }
+
+    .export-sheet {
+      width: 100%;
+      max-width: 420px;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 22px 22px 0 0;
+      box-shadow: var(--shadow-modal);
+      overflow: hidden;
+      animation: entry-sheet-in 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    @media (min-width: 560px) { .export-sheet { border-radius: 22px; } }
+    .export-sheet__body {
+      padding: .3rem 1.25rem 1.25rem;
+      display: grid;
+      gap: .65rem;
+    }
+    .export-option {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      padding: .85rem .95rem;
+      display: grid;
+      grid-template-columns: 38px 1fr auto;
+      align-items: center;
+      gap: .8rem;
+      text-align: left;
+      font-family: var(--font-ui);
+      color: var(--ink);
+      cursor: pointer;
+      transition: border-color .15s, box-shadow .15s, transform .15s;
+    }
+    .export-option:hover {
+      border-color: rgba(32, 110, 251, .35);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, .08);
+      transform: translateY(-1px);
+    }
+    .export-option__icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: var(--brand-light);
+      color: var(--brand);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+    .export-option__title { display: block; font-size: .92rem; font-weight: 700; }
+    .export-option__meta { display: block; margin-top: .1rem; font-size: .74rem; color: var(--muted); line-height: 1.35; }
+    .export-option__arrow { color: var(--muted); font-size: .8rem; }
     .sr-only {
       position: absolute;
       width: 1px;
@@ -1507,12 +1587,47 @@
 
       <footer class="entry-sheet__foot">
         <div class="entry-sheet__actions">
-          <button type="button" class="btn-danger-ghost" id="btn-delete-entry" hidden>Löschen</button>
-          <button type="button" class="btn-ical-export" id="btn-ical-single" hidden title="Als Kalenderdatei herunterladen (.ics – kompatibel mit Outlook, Apple Kalender, Google Kalender)"><i class="fa-solid fa-calendar-arrow-down" aria-hidden="true"></i> Exportieren</button>
+          <button type="button" class="btn-danger-ghost" id="btn-delete-entry" hidden><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="btn-label">Löschen</span></button>
+          <button type="button" class="btn-export-entry" id="btn-export-entry" hidden><i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i><span class="btn-label">Exportieren</span></button>
           <button type="button" class="btn-revision" id="m-cancel">Abbrechen</button>
           <button type="button" class="btn-done" id="m-done" disabled>Hinzufügen</button>
         </div>
       </footer>
+    </div>
+  </div>
+
+  <div
+    id="modal-export"
+    class="tk-modal-overlay"
+    aria-hidden="true"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="export-title"
+  >
+    <div class="export-sheet" id="export-box">
+      <header class="entry-sheet__head">
+        <h2 class="entry-sheet__title" id="export-title">Eintrag exportieren</h2>
+        <button type="button" class="entry-sheet__close" id="export-close" title="Schließen" aria-label="Schließen">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </header>
+      <div class="export-sheet__body">
+        <button type="button" class="export-option" data-export-kind="ical">
+          <span class="export-option__icon"><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i></span>
+          <span><span class="export-option__title">iCal herunterladen</span><span class="export-option__meta">Universelle .ics-Datei für Apple Kalender, Outlook und mehr.</span></span>
+          <i class="fa-solid fa-download export-option__arrow" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="export-option" data-export-kind="outlook">
+          <span class="export-option__icon"><i class="fa-brands fa-microsoft" aria-hidden="true"></i></span>
+          <span><span class="export-option__title">Outlook öffnen</span><span class="export-option__meta">Öffnet Outlook Web mit den Eintragsdaten als Terminvorlage.</span></span>
+          <i class="fa-solid fa-arrow-up-right-from-square export-option__arrow" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="export-option" data-export-kind="google">
+          <span class="export-option__icon"><i class="fa-brands fa-google" aria-hidden="true"></i></span>
+          <span><span class="export-option__title">Google Kalender öffnen</span><span class="export-option__meta">Öffnet eine neue Google-Kalender-Terminvorlage.</span></span>
+          <i class="fa-solid fa-arrow-up-right-from-square export-option__arrow" aria-hidden="true"></i>
+        </button>
+      </div>
     </div>
   </div>
 

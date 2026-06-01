@@ -63,7 +63,11 @@ const els = {
   autosaveStatus: null,
   modalTitle: null,
   btnDeleteEntry: null,
+  btnExportEntry: null,
   btnDone: null,
+  exportOvl: null,
+  exportClose: null,
+  exportBox: null,
   search: null,
   btnCreate: null,
   btnViewMonth: null,
@@ -79,7 +83,6 @@ const els = {
   memberSelectAll: null,
   memberSelectNone: null,
   btnIcalAll: null,
-  btnIcalSingle: null,
 };
 
 const URLAUB_BLOCK_MSG =
@@ -431,6 +434,64 @@ function formatDateRangeShort(startD, endD) {
   return `${formatYmdDe(startD)} – ${formatYmdDe(endD)}`;
 }
 
+function compactYmdForCalendar(ymd, addDays = 0) {
+  if (!ymd) return "";
+  const d = new Date(`${ymd}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  if (addDays) d.setDate(d.getDate() + addDays);
+  return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+function getExportRow() {
+  if (draftEventId) return dbRows.find((r) => r.id === draftEventId) || null;
+  const payload = readFormPayload();
+  if (!payload.start_date || !payload.end_date || !payload.title) return null;
+  return {
+    ...payload,
+    id: "draft",
+    member_name: currentMemberName,
+  };
+}
+
+function buildExportData(row) {
+  if (!row) return null;
+  const title = entryDisplayTitle(row);
+  const start = row.start_date;
+  const end = row.end_date || start;
+  return {
+    title,
+    note: row.note || "",
+    start,
+    end,
+    endExclusive: compactYmdForCalendar(end, 1),
+    startCompact: compactYmdForCalendar(start),
+    fileSlug: `${title || "Kalendereintrag"}_${start || ""}`.replace(/[^\wäöüÄÖÜß-]+/gi, "_").slice(0, 80),
+  };
+}
+
+function openOutlookExport(data) {
+  const params = new URLSearchParams({
+    path: "/calendar/action/compose",
+    rru: "addevent",
+    subject: data.title,
+    startdt: data.start,
+    enddt: data.end,
+    allday: "true",
+    body: data.note || "",
+  });
+  window.open(`https://outlook.office.com/calendar/0/deeplink/compose?${params.toString()}`, "_blank", "noopener");
+}
+
+function openGoogleExport(data) {
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: data.title,
+    dates: `${data.startCompact}/${data.endExclusive}`,
+    details: data.note || "",
+  });
+  window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, "_blank", "noopener");
+}
+
 function rebuildSearchState() {
   spotlightDates = new Set();
   searchMatches = [];
@@ -549,6 +610,52 @@ function setFormTypeValue(type) {
   updateDoneButton();
 }
 
+function openExportModal() {
+  const row = getExportRow();
+  const data = buildExportData(row);
+  if (!data || !data.start || !data.end || !data.title) {
+    toast("Eintrag erst mit Titel und Zeitraum speichern", "err");
+    return;
+  }
+  if (els.exportOvl) {
+    els.exportOvl.dataset.exportTitle = data.title;
+    els.exportOvl.dataset.exportNote = data.note || "";
+    els.exportOvl.dataset.exportStart = data.start;
+    els.exportOvl.dataset.exportEnd = data.end;
+    els.exportOvl.classList.add("is-open");
+    els.exportOvl.setAttribute("aria-hidden", "false");
+  }
+}
+
+function closeExportModal() {
+  if (!els.exportOvl) return;
+  els.exportOvl.classList.remove("is-open");
+  els.exportOvl.setAttribute("aria-hidden", "true");
+}
+
+function getExportDataFromDialog() {
+  if (!els.exportOvl) return null;
+  return buildExportData({
+    title: els.exportOvl.dataset.exportTitle || "",
+    note: els.exportOvl.dataset.exportNote || "",
+    start_date: els.exportOvl.dataset.exportStart || "",
+    end_date: els.exportOvl.dataset.exportEnd || "",
+  });
+}
+
+function handleExportOption(kind) {
+  const data = getExportDataFromDialog();
+  if (!data) return;
+  if (kind === "outlook") openOutlookExport(data);
+  else if (kind === "google") openGoogleExport(data);
+  else {
+    const row = getExportRow();
+    if (row) exportSingleEntry(row);
+    else toast("Kein Eintrag zum Exportieren", "err");
+  }
+  closeExportModal();
+}
+
 function scheduleAutosave() {
   refreshFormState();
 }
@@ -603,11 +710,6 @@ function openEntryModal(preset, editRow) {
   const readOnly = editRow && isReadOnlyEntry(editRow);
   const isClosure = editRow && isSystemEntry(editRow);
 
-  // Show export button only when viewing / editing an existing entry
-  if (els.btnIcalSingle) {
-    els.btnIcalSingle.hidden = !editRow;
-  }
-
   if (els.modalTitle) {
     els.modalTitle.textContent = readOnly
       ? isClosure
@@ -620,6 +722,9 @@ function openEntryModal(preset, editRow) {
   if (els.btnDeleteEntry) {
     els.btnDeleteEntry.hidden = !editRow || readOnly;
   }
+  if (els.btnExportEntry) {
+    els.btnExportEntry.hidden = !editRow;
+  }
 
   if (readOnly) {
     const msg = isClosure
@@ -628,6 +733,7 @@ function openEntryModal(preset, editRow) {
     showUrlaubNotice(true, msg);
     if (els.formNote) els.formNote.value = editRow.note || "";
     if (els.btnDone) els.btnDone.hidden = true;
+    if (els.btnExportEntry) els.btnExportEntry.hidden = false;
     updateDoneButton();
     setAutosaveStatus("");
     els.modalOvl.classList.add("is-open");
@@ -637,6 +743,7 @@ function openEntryModal(preset, editRow) {
 
   showUrlaubNotice(false);
   if (els.btnDone) els.btnDone.hidden = false;
+  if (els.btnExportEntry) els.btnExportEntry.hidden = !editRow;
   setFormTypeValue(editRow ? editType : "krank");
   if (els.formSonstigesSuffix) {
     els.formSonstigesSuffix.value =
@@ -878,7 +985,11 @@ async function init() {
   els.autosaveStatus = document.getElementById("f-autosave-status");
   els.modalTitle = document.getElementById("m-title");
   els.btnDeleteEntry = document.getElementById("btn-delete-entry");
+  els.btnExportEntry = document.getElementById("btn-export-entry");
   els.btnDone = document.getElementById("m-done");
+  els.exportOvl = document.getElementById("modal-export");
+  els.exportClose = document.getElementById("export-close");
+  els.exportBox = document.getElementById("export-box");
   els.search = document.getElementById("header-search");
   els.searchSpotlight = document.getElementById("search-spotlight");
   els.memberFilterList = document.getElementById("member-filter-list");
@@ -894,7 +1005,6 @@ async function init() {
   els.formTypeRow = document.querySelector(".field-group-type");
   els.btnOpenUrlaubsplanung = document.getElementById("btn-open-urlaubsplanung");
   els.btnIcalAll = document.getElementById("btn-ical-all");
-  els.btnIcalSingle = document.getElementById("btn-ical-single");
 
   if (els.formType) setFormTypeValue(els.formType.value || "krank");
 
@@ -905,14 +1015,6 @@ async function init() {
   // Global: export all visible entries as .ics
   if (els.btnIcalAll) {
     els.btnIcalAll.addEventListener("click", exportAllVisible);
-  }
-
-  // Single: export the currently open entry as .ics (shown only when editing)
-  if (els.btnIcalSingle) {
-    els.btnIcalSingle.addEventListener("click", () => {
-      const row = draftEventId ? dbRows.find((r) => r.id === draftEventId) : null;
-      exportSingleEntry(row);
-    });
   }
 
   if (els.formTypeChips) {
@@ -947,6 +1049,20 @@ async function init() {
       if (!isEntryReady() || (els.formType?.value === "urlaub" && !isAdminUser)) return;
       const ok = await persistEntry();
       if (ok) closeModal(els.modalOvl);
+    });
+  }
+  if (els.btnExportEntry) {
+    els.btnExportEntry.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openExportModal();
+    });
+  }
+  if (els.exportClose) els.exportClose.addEventListener("click", closeExportModal);
+  if (els.exportOvl) {
+    els.exportOvl.addEventListener("click", (e) => {
+      if (e.target === els.exportOvl) closeExportModal();
+      const opt = e.target?.closest?.("[data-export-kind]");
+      if (opt) handleExportOption(opt.getAttribute("data-export-kind"));
     });
   }
 
@@ -1104,7 +1220,13 @@ async function init() {
       if (e.target === els.modalOvl) closeModal(els.modalOvl);
     });
     document.addEventListener("keydown", (e) => {
-      if (e.key !== "Escape" || !els.modalOvl.classList.contains("is-open")) return;
+      if (e.key !== "Escape") return;
+      if (els.exportOvl?.classList.contains("is-open")) {
+        e.preventDefault();
+        closeExportModal();
+        return;
+      }
+      if (!els.modalOvl.classList.contains("is-open")) return;
       e.preventDefault();
       closeModal(els.modalOvl);
     });
