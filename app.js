@@ -18,6 +18,7 @@ const TYPE_LABELS = {
   krank: "Krank",
   dienstreise: "Dienstreise",
   sonstiges: "Sonstiges",
+  betriebsferien: "Betriebsferien",
 };
 
 const TYPE_COLORS = {
@@ -25,6 +26,7 @@ const TYPE_COLORS = {
   krank: { bg: "#dc2626", fg: "#ffffff" },
   dienstreise: { bg: "#f59e0b", fg: "#0f172a" },
   sonstiges: { bg: "#475569", fg: "#ffffff" },
+  betriebsferien: { bg: "#206efb", fg: "#ffffff" },
   nrw: { bg: "#e2e8f0", fg: "#0f172a" },
 };
 
