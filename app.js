@@ -786,7 +786,7 @@ function openEntryModal(preset, editRow) {
     els.modalTitle.textContent = readOnly
       ? isClosure
         ? "Betriebsferien / ROOTS-Tag"
-        : "Urlaub (automatisch eingetragen)"
+        : "Urlaub"
       : editRow
         ? "Eintrag bearbeiten"
         : "Eintrag erstellen";

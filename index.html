@@ -622,9 +622,9 @@
       flex: 1 1 auto;
       display: flex;
       flex-direction: column;
-      gap: 1.25rem;
+      gap: 1.6rem;
     }
-    .entry-block { display: flex; flex-direction: column; gap: 0.55rem; }
+    .entry-block { display: flex; flex-direction: column; gap: 0.7rem; }
     .entry-block-label {
       margin: 0;
       font-size: 0.8rem;
@@ -780,9 +780,9 @@
     }
     .entry-daypart-chip {
       min-width: 0;
-      height: 42px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
+      height: 44px;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
       background: var(--bg);
       color: var(--muted);
       font-family: var(--font-ui);
@@ -796,9 +796,9 @@
       transition: background .16s ease, border-color .16s ease, color .16s ease, opacity .16s ease;
     }
     .entry-daypart-chip[aria-pressed="true"] {
-      border-color: rgba(22, 163, 74, .38);
-      background: rgba(22, 163, 74, .1);
-      color: #15803d;
+      border-color: var(--brand);
+      background: var(--brand-light, #eff6ff);
+      color: var(--brand);
     }
     .entry-daypart-chip:disabled {
       opacity: .42;
@@ -1495,7 +1495,7 @@
           </div>
           <button type="button" class="btn-ical-export" id="btn-ical-all" title="Alle sichtbaren Einträge als .ics herunterladen (kompatibel mit Outlook, Apple Kalender, Google Kalender)">
             <i class="fa-solid fa-calendar-arrow-down" aria-hidden="true"></i>
-            <span class="btn-ical-label">Kalender exportieren</span>
+            <span class="btn-ical-label">.ics exportieren</span>
           </button>
           <button type="button" class="btn-primary" id="btn-new-entry" title="Eintrag erstellen">
             <i class="fa-solid fa-plus" aria-hidden="true"></i>
