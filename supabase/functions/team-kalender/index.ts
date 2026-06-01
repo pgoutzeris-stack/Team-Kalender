@@ -82,6 +82,7 @@ type EventRow = {
   title: string | null;
   start_date: string;
   end_date: string;
+  day_part: string | null;
   note: string | null;
   created_at: string;
   is_system: boolean;
@@ -201,6 +202,7 @@ function systemBlockedResponse(c: Record<string, string>) {
 }
 
 function eventOut(e: EventRow, approvedUrlaubIds?: Set<string>) {
+  const dayPart = e.day_part === "am" || e.day_part === "pm" ? e.day_part : "full";
   return {
     id: e.id,
     member_id: e.member_id,
@@ -208,6 +210,7 @@ function eventOut(e: EventRow, approvedUrlaubIds?: Set<string>) {
     title: e.title,
     start_date: e.start_date,
     end_date: e.end_date,
+    day_part: dayPart,
     note: e.note,
     created_at: e.created_at,
     is_system: Boolean(e.is_system),
@@ -215,6 +218,12 @@ function eventOut(e: EventRow, approvedUrlaubIds?: Set<string>) {
     member_name: e.team_members?.name ?? null,
     member_kuerzel: e.team_members?.kuerzel ?? null,
   };
+}
+
+function normalizeDayPart(value: unknown): "full" | "am" | "pm" {
+  const v = String(value ?? "full").trim().toLowerCase();
+  if (v === "am" || v === "pm") return v;
+  return "full";
 }
 
 Deno.serve(async (req) => {
@@ -263,7 +272,7 @@ Deno.serve(async (req) => {
 
       const { data, error } = await supa
         .from("events")
-        .select("id,member_id,type,title,start_date,end_date,note,created_at,is_system,team_members(name,kuerzel)")
+        .select("id,member_id,type,title,start_date,end_date,day_part,note,created_at,is_system,team_members(name,kuerzel)")
         .order("start_date", { ascending: true });
       if (error) throw error;
       const rows = (data ?? []) as EventRow[];
@@ -361,12 +370,19 @@ Deno.serve(async (req) => {
         const type = String(body.type ?? "");
         const start_date = String(body.start_date ?? "");
         const end_date = String(body.end_date ?? "");
+        const day_part = normalizeDayPart(body.day_part);
         const title = String(body.title ?? "").trim();
         const note =
           body.note == null || body.note === "" ? null : String(body.note);
         if (!id || !start_date || !end_date) {
           return new Response(
             JSON.stringify({ error: "id, start_date, end_date erforderlich" }),
+            { status: 400, headers: { ...c, "Content-Type": "application/json" } },
+          );
+        }
+        if (day_part !== "full" && start_date !== end_date) {
+          return new Response(
+            JSON.stringify({ error: "Halbtage sind nur für einzelne Kalendertage möglich" }),
             { status: 400, headers: { ...c, "Content-Type": "application/json" } },
           );
         }
@@ -405,9 +421,9 @@ Deno.serve(async (req) => {
         }
         const { data, error } = await supa
           .from("events")
-          .update({ type, title, start_date, end_date, note })
+          .update({ type, title, start_date, end_date, day_part, note })
           .eq("id", id)
-          .select("id,member_id,type,title,start_date,end_date,note,created_at,is_system,team_members(name,kuerzel)")
+          .select("id,member_id,type,title,start_date,end_date,day_part,note,created_at,is_system,team_members(name,kuerzel)")
           .single();
         if (error) throw error;
         const e = data as EventRow;
@@ -454,11 +470,18 @@ Deno.serve(async (req) => {
       const title = String(body.title ?? "").trim();
       const start_date = String(body.start_date ?? "");
       const end_date = String(body.end_date ?? "");
+      const day_part = normalizeDayPart(body.day_part);
       const note =
         body.note == null || body.note === "" ? null : String(body.note);
       if (!member_id || !start_date || !end_date) {
         return new Response(
           JSON.stringify({ error: "member_id, start_date, end_date erforderlich" }),
+          { status: 400, headers: { ...c, "Content-Type": "application/json" } },
+        );
+      }
+      if (day_part !== "full" && start_date !== end_date) {
+        return new Response(
+          JSON.stringify({ error: "Halbtage sind nur für einzelne Kalendertage möglich" }),
           { status: 400, headers: { ...c, "Content-Type": "application/json" } },
         );
       }
@@ -481,8 +504,8 @@ Deno.serve(async (req) => {
       }
       const { data, error } = await supa
         .from("events")
-        .insert({ member_id, type, title, start_date, end_date, note })
-        .select("id,member_id,type,title,start_date,end_date,note,created_at,is_system,team_members(name,kuerzel)")
+        .insert({ member_id, type, title, start_date, end_date, day_part, note })
+        .select("id,member_id,type,title,start_date,end_date,day_part,note,created_at,is_system,team_members(name,kuerzel)")
         .single();
       if (error) throw error;
       const e = data as EventRow;

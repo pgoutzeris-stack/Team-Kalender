@@ -75,7 +75,7 @@ export async function ensureMemberForUser(userId, name) {
 }
 
 /**
- * @param {{ member_id: string, type: string, start_date: string, end_date: string, note?: string | null, title?: string }} row
+ * @param {{ member_id: string, type: string, start_date: string, end_date: string, day_part?: string, note?: string | null, title?: string }} row
  */
 export async function insertEvent(row) {
   return await apiJson("POST", "", { kind: "event", ...row });
@@ -83,7 +83,7 @@ export async function insertEvent(row) {
 
 /**
  * @param {string} id
- * @param {{ type: string, start_date: string, end_date: string, note?: string | null, title?: string }} row
+ * @param {{ type: string, start_date: string, end_date: string, day_part?: string, note?: string | null, title?: string }} row
  */
 export async function updateEvent(id, row) {
   return await apiJson("POST", "", { kind: "event_update", id, ...row });

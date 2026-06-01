@@ -21,11 +21,17 @@ const TYPE_LABELS = {
 };
 
 const TYPE_COLORS = {
-  urlaub: { bg: "#206efb", fg: "#ffffff" },
+  urlaub: { bg: "#16a34a", fg: "#ffffff" },
   krank: { bg: "#dc2626", fg: "#ffffff" },
   dienstreise: { bg: "#f59e0b", fg: "#0f172a" },
   sonstiges: { bg: "#475569", fg: "#ffffff" },
   nrw: { bg: "#e2e8f0", fg: "#0f172a" },
+};
+
+const DAY_PART_LABELS = {
+  full: "Ganztägig",
+  am: "Vormittag",
+  pm: "Nachmittag",
 };
 
 let calendar = null;
@@ -56,6 +62,8 @@ const els = {
   formTypeChips: null,
   formStart: null,
   formEnd: null,
+  formDayPart: null,
+  formDayPartChips: null,
   formSonstigesWrap: null,
   formSonstigesSuffix: null,
   formNamePrefix: null,
@@ -71,7 +79,6 @@ const els = {
   search: null,
   btnCreate: null,
   btnViewMonth: null,
-  btnViewWeek: null,
   btnViewYear: null,
   urlaubNotice: null,
   urlaubNoticeText: null,
@@ -196,10 +203,53 @@ function parseSonstigesSuffix(storedTitle) {
   return t;
 }
 
+function normalizeDayPart(value) {
+  return value === "am" || value === "pm" ? value : "full";
+}
+
+function dayPartLabel(value) {
+  return DAY_PART_LABELS[normalizeDayPart(value)] || DAY_PART_LABELS.full;
+}
+
+function dayPartSuffix(row) {
+  const part = normalizeDayPart(row?.day_part);
+  return part === "full" ? "" : ` · ${dayPartLabel(part)}`;
+}
+
+function entryDisplayTitleWithDayPart(row) {
+  return `${entryDisplayTitle(row)}${dayPartSuffix(row)}`;
+}
+
+function setDayPartValue(value) {
+  const part = normalizeDayPart(value);
+  if (els.formDayPart) els.formDayPart.value = part;
+  if (els.formDayPartChips) {
+    els.formDayPartChips.querySelectorAll("[data-day-part]").forEach((btn) => {
+      const on = (btn.getAttribute("data-day-part") || "full") === part;
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+}
+
+function refreshDayPartAvailability() {
+  const isRange = Boolean(els.formStart?.value && els.formEnd?.value && els.formStart.value !== els.formEnd.value);
+  if (!els.formDayPartChips) return;
+  els.formDayPartChips.querySelectorAll("[data-day-part]").forEach((btn) => {
+    const part = btn.getAttribute("data-day-part") || "full";
+    const disabled = isRange && part !== "full";
+    btn.disabled = disabled;
+    btn.title = disabled ? "Halbtage sind nur für einzelne Kalendertage möglich" : "";
+  });
+  if (isRange && normalizeDayPart(els.formDayPart?.value) !== "full") {
+    setDayPartValue("full");
+  }
+}
+
 function readFormPayload() {
   const s = (els.formStart && els.formStart.value) || "";
   const e = (els.formEnd && els.formEnd.value) || "";
   const type = els.formType.value;
+  const day_part = s && e && s === e ? normalizeDayPart(els.formDayPart?.value) : "full";
   const suffix =
     type === "sonstiges" && els.formSonstigesSuffix
       ? els.formSonstigesSuffix.value.trim()
@@ -209,6 +259,7 @@ function readFormPayload() {
     type,
     start_date: s,
     end_date: e,
+    day_part,
     note: els.formNote.value.trim() || null,
   };
 }
@@ -246,6 +297,7 @@ function updateDoneButton() {
 }
 
 function refreshFormState() {
+  refreshDayPartAvailability();
   updateDoneButton();
 }
 
@@ -288,7 +340,7 @@ function rowToFcEvent(row) {
   const t = row.type === "homeoffice" ? "sonstiges" : row.type;
   const col = TYPE_COLORS[t] || TYPE_COLORS.sonstiges;
   const n = row.member_name || currentMemberName || "—";
-  const displayTitle = entryDisplayTitle(row);
+  const displayTitle = entryDisplayTitleWithDayPart(row);
   return {
     id: `db-${row.id}`,
     title: displayTitle,
@@ -306,6 +358,7 @@ function rowToFcEvent(row) {
       type: t,
       name: n,
       entryTitle: (row.title || "").trim(),
+      dayPart: normalizeDayPart(row.day_part),
       note: row.note || "",
       startD: row.start_date,
       endD: row.end_date,
@@ -455,14 +508,25 @@ function getExportRow() {
 
 function buildExportData(row) {
   if (!row) return null;
-  const title = entryDisplayTitle(row);
+  const title = entryDisplayTitleWithDayPart(row);
   const start = row.start_date;
   const end = row.end_date || start;
+  const dayPart = start === end ? normalizeDayPart(row.day_part) : "full";
+  const timed = dayPart !== "full";
+  const timeRange =
+    dayPart === "am"
+      ? { startTime: "08:00", endTime: "12:00" }
+      : dayPart === "pm"
+        ? { startTime: "13:00", endTime: "17:00" }
+        : { startTime: "", endTime: "" };
   return {
     title,
     note: row.note || "",
     start,
     end,
+    dayPart,
+    timed,
+    ...timeRange,
     endExclusive: compactYmdForCalendar(end, 1),
     startCompact: compactYmdForCalendar(start),
     fileSlug: `${title || "Kalendereintrag"}_${start || ""}`.replace(/[^\wäöüÄÖÜß-]+/gi, "_").slice(0, 80),
@@ -470,23 +534,28 @@ function buildExportData(row) {
 }
 
 function openOutlookExport(data) {
+  const startdt = data.timed ? `${data.start}T${data.startTime}:00` : data.start;
+  const enddt = data.timed ? `${data.end}T${data.endTime}:00` : data.end;
   const params = new URLSearchParams({
     path: "/calendar/action/compose",
     rru: "addevent",
     subject: data.title,
-    startdt: data.start,
-    enddt: data.end,
-    allday: "true",
+    startdt,
+    enddt,
+    allday: data.timed ? "false" : "true",
     body: data.note || "",
   });
   window.open(`https://outlook.office.com/calendar/0/deeplink/compose?${params.toString()}`, "_blank", "noopener");
 }
 
 function openGoogleExport(data) {
+  const dates = data.timed
+    ? `${data.start.replace(/-/g, "")}T${data.startTime.replace(":", "")}00/${data.end.replace(/-/g, "")}T${data.endTime.replace(":", "")}00`
+    : `${data.startCompact}/${data.endExclusive}`;
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: data.title,
-    dates: `${data.startCompact}/${data.endExclusive}`,
+    dates,
     details: data.note || "",
   });
   window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, "_blank", "noopener");
@@ -622,6 +691,7 @@ function openExportModal() {
     els.exportOvl.dataset.exportNote = data.note || "";
     els.exportOvl.dataset.exportStart = data.start;
     els.exportOvl.dataset.exportEnd = data.end;
+    els.exportOvl.dataset.exportDayPart = data.dayPart;
     els.exportOvl.classList.add("is-open");
     els.exportOvl.setAttribute("aria-hidden", "false");
   }
@@ -640,6 +710,7 @@ function getExportDataFromDialog() {
     note: els.exportOvl.dataset.exportNote || "",
     start_date: els.exportOvl.dataset.exportStart || "",
     end_date: els.exportOvl.dataset.exportEnd || "",
+    day_part: els.exportOvl.dataset.exportDayPart || "full",
   });
 }
 
@@ -663,7 +734,7 @@ function scheduleAutosave() {
 async function persistEntry() {
   if (!currentMemberId || saveBusy) return false;
   if (!isEntryReady()) return false;
-  const { title, type, start_date, end_date, note } = readFormPayload();
+  const { title, type, start_date, end_date, day_part, note } = readFormPayload();
   if (type === "urlaub" && !isAdminUser) {
     toast(URLAUB_BLOCK_MSG, "err");
     showUrlaubNotice(true, `<i class="fa-solid fa-circle-info" aria-hidden="true"></i> ${URLAUB_BLOCK_MSG}`);
@@ -673,7 +744,7 @@ async function persistEntry() {
   try {
     let row;
     if (draftEventId) {
-      row = await updateEvent(draftEventId, { title, type, start_date, end_date, note });
+      row = await updateEvent(draftEventId, { title, type, start_date, end_date, day_part, note });
     } else {
       row = await insertEvent({
         member_id: currentMemberId,
@@ -681,6 +752,7 @@ async function persistEntry() {
         type,
         start_date,
         end_date,
+        day_part,
         note,
       });
     }
@@ -732,6 +804,7 @@ function openEntryModal(preset, editRow) {
       : `<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Genehmigter Urlaub: <strong>${formatYmdDe(editRow.start_date)} – ${formatYmdDe(editRow.end_date)}</strong>. Änderungen nur über die Urlaubsplanung.`;
     showUrlaubNotice(true, msg);
     if (els.formNote) els.formNote.value = editRow.note || "";
+    setDayPartValue(editRow.day_part || "full");
     if (els.btnDone) els.btnDone.hidden = true;
     if (els.btnExportEntry) els.btnExportEntry.hidden = false;
     updateDoneButton();
@@ -751,6 +824,7 @@ function openEntryModal(preset, editRow) {
   }
   updateSonstigesFieldVisibility();
   els.formNote.value = editRow ? editRow.note || "" : "";
+  setDayPartValue(editRow ? editRow.day_part || "full" : "full");
 
   const today = toYmd(new Date());
   let startYmd = today;
@@ -823,21 +897,24 @@ function icalFold(line) {
  */
 function rowToVevent(row) {
   const start = ymdToIcal(row.start_date);
-  // iCal all-day DTEND is exclusive → add one day
+  const dayPart = row.start_date === row.end_date ? normalizeDayPart(row.day_part) : "full";
+  const isTimed = dayPart !== "full";
   const endDate = new Date(row.end_date + "T00:00:00");
   endDate.setDate(endDate.getDate() + 1);
   const end = endDate.toISOString().slice(0, 10).replace(/-/g, "");
   const uid = `roots-tk-${row.id || start}-${row.member_id || "x"}@roots-consultants.com`;
-  const summary = icalEscape(row.title || TYPE_LABELS[row.type] || row.type || "Eintrag");
+  const summary = icalEscape(entryDisplayTitleWithDayPart(row));
   const description = icalEscape(row.note || "");
   const category = icalEscape(TYPE_LABELS[row.type] || row.type || "Sonstiges");
   const now = new Date().toISOString().replace(/[-:.]/g, "").slice(0, 15) + "Z";
+  const startTime = dayPart === "am" ? "080000" : "130000";
+  const endTime = dayPart === "am" ? "120000" : "170000";
   const lines = [
     "BEGIN:VEVENT",
     icalFold(`UID:${uid}`),
     icalFold(`DTSTAMP:${now}`),
-    icalFold(`DTSTART;VALUE=DATE:${start}`),
-    icalFold(`DTEND;VALUE=DATE:${end}`),
+    isTimed ? icalFold(`DTSTART;TZID=Europe/Berlin:${start}T${startTime}`) : icalFold(`DTSTART;VALUE=DATE:${start}`),
+    isTimed ? icalFold(`DTEND;TZID=Europe/Berlin:${start}T${endTime}`) : icalFold(`DTEND;VALUE=DATE:${end}`),
     icalFold(`SUMMARY:${summary}`),
     description ? icalFold(`DESCRIPTION:${description}`) : null,
     icalFold(`CATEGORIES:${category}`),
@@ -978,6 +1055,8 @@ async function init() {
   els.formTypeChips = document.getElementById("f-type-chips");
   els.formStart = document.getElementById("f-start");
   els.formEnd = document.getElementById("f-end");
+  els.formDayPart = document.getElementById("f-day-part");
+  els.formDayPartChips = document.getElementById("f-day-part-chips");
   els.formSonstigesWrap = document.getElementById("f-sonstiges-wrap");
   els.formSonstigesSuffix = document.getElementById("f-sonstiges-suffix");
   els.formNamePrefix = document.getElementById("f-name-prefix");
@@ -997,7 +1076,6 @@ async function init() {
   els.memberSelectNone = document.getElementById("member-select-none");
   els.btnCreate = document.getElementById("btn-new-entry");
   els.btnViewMonth = document.getElementById("view-month");
-  els.btnViewWeek = document.getElementById("view-week");
   els.btnViewYear = document.getElementById("view-year");
   els.urlaubNotice = document.getElementById("f-urlaub-notice");
   els.urlaubNoticeText = document.getElementById("f-urlaub-notice-text");
@@ -1031,6 +1109,14 @@ async function init() {
   }
   if (els.formSonstigesSuffix) {
     els.formSonstigesSuffix.addEventListener("input", refreshFormState);
+  }
+  if (els.formDayPartChips) {
+    els.formDayPartChips.addEventListener("click", (e) => {
+      const btn = e.target && e.target.closest("[data-day-part]");
+      if (!btn || btn.disabled) return;
+      setDayPartValue(btn.getAttribute("data-day-part") || "full");
+      refreshFormState();
+    });
   }
   if (els.formNote) els.formNote.addEventListener("input", refreshFormState);
   if (els.formStart) {
@@ -1123,7 +1209,6 @@ async function init() {
     },
     views: {
       dayGridMonth: { showNonCurrentDates: false, fixedWeekCount: true },
-      dayGridWeek: { dayMaxEvents: 8, showNonCurrentDates: true },
       multiMonthYear: {
         multiMonthMaxColumns: 3,
         multiMonthMinWidth: 200,
@@ -1179,14 +1264,13 @@ async function init() {
   syncViewButtons = function () {
     if (!calendar) return;
     const t = calendar.view.type;
-    [els.btnViewMonth, els.btnViewWeek, els.btnViewYear].forEach((b) => {
+    [els.btnViewMonth, els.btnViewYear].forEach((b) => {
       if (!b) return;
       b.classList.remove("active");
       b.setAttribute("aria-pressed", "false");
     });
     let activeBtn = els.btnViewMonth;
-    if (t === "dayGridWeek") activeBtn = els.btnViewWeek;
-    else if (t === "multiMonthYear") activeBtn = els.btnViewYear;
+    if (t === "multiMonthYear") activeBtn = els.btnViewYear;
     if (activeBtn) {
       activeBtn.classList.add("active");
       activeBtn.setAttribute("aria-pressed", "true");
@@ -1206,7 +1290,6 @@ async function init() {
   syncViewButtons();
 
   els.btnViewMonth.addEventListener("click", () => calendar.changeView("dayGridMonth"));
-  els.btnViewWeek.addEventListener("click", () => calendar.changeView("dayGridWeek"));
   els.btnViewYear.addEventListener("click", () => calendar.changeView("multiMonthYear"));
 
   els.btnCreate.addEventListener("click", () => {
