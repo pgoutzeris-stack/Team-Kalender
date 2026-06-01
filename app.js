@@ -78,6 +78,8 @@ const els = {
   memberFilterList: null,
   memberSelectAll: null,
   memberSelectNone: null,
+  btnIcalAll: null,
+  btnIcalSingle: null,
 };
 
 const URLAUB_BLOCK_MSG =
@@ -601,6 +603,11 @@ function openEntryModal(preset, editRow) {
   const readOnly = editRow && isReadOnlyEntry(editRow);
   const isClosure = editRow && isSystemEntry(editRow);
 
+  // Show export button only when viewing / editing an existing entry
+  if (els.btnIcalSingle) {
+    els.btnIcalSingle.hidden = !editRow;
+  }
+
   if (els.modalTitle) {
     els.modalTitle.textContent = readOnly
       ? isClosure
@@ -667,6 +674,124 @@ function escapeHtml(s) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/* ─── iCal Export ─────────────────────────────────────────── */
+
+/**
+ * Format a YYYY-MM-DD date as iCal all-day value: 20260115
+ */
+function ymdToIcal(ymd) {
+  return (ymd || "").replace(/-/g, "");
+}
+
+/**
+ * Escape iCal text: backslash, semicolon, comma, newline
+ */
+function icalEscape(str) {
+  return String(str ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\n/g, "\\n");
+}
+
+/**
+ * Fold long iCal lines at 75 octets (RFC 5545 §3.1)
+ */
+function icalFold(line) {
+  const MAX = 75;
+  if (line.length <= MAX) return line;
+  let out = "";
+  while (line.length > MAX) {
+    out += line.slice(0, MAX) + "\r\n ";
+    line = line.slice(MAX);
+  }
+  return out + line;
+}
+
+/**
+ * Build a VEVENT block for one calendar row.
+ * All-day events use DATE values; end is exclusive (end_date + 1 day).
+ */
+function rowToVevent(row) {
+  const start = ymdToIcal(row.start_date);
+  // iCal all-day DTEND is exclusive → add one day
+  const endDate = new Date(row.end_date + "T00:00:00");
+  endDate.setDate(endDate.getDate() + 1);
+  const end = endDate.toISOString().slice(0, 10).replace(/-/g, "");
+  const uid = `roots-tk-${row.id || start}-${row.member_id || "x"}@roots-consultants.com`;
+  const summary = icalEscape(row.title || TYPE_LABELS[row.type] || row.type || "Eintrag");
+  const description = icalEscape(row.note || "");
+  const category = icalEscape(TYPE_LABELS[row.type] || row.type || "Sonstiges");
+  const now = new Date().toISOString().replace(/[-:.]/g, "").slice(0, 15) + "Z";
+  const lines = [
+    "BEGIN:VEVENT",
+    icalFold(`UID:${uid}`),
+    icalFold(`DTSTAMP:${now}`),
+    icalFold(`DTSTART;VALUE=DATE:${start}`),
+    icalFold(`DTEND;VALUE=DATE:${end}`),
+    icalFold(`SUMMARY:${summary}`),
+    description ? icalFold(`DESCRIPTION:${description}`) : null,
+    icalFold(`CATEGORIES:${category}`),
+    "TRANSP:TRANSPARENT",
+    "END:VEVENT",
+  ].filter(Boolean);
+  return lines.join("\r\n");
+}
+
+/**
+ * Wrap VEVENTs in a VCALENDAR and trigger browser download.
+ */
+function downloadIcs(vevents, filename) {
+  const cal = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//ROOTS Brand Strategy Consultants//Team-Kalender//DE",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "X-WR-CALNAME:ROOTS Team-Kalender",
+    "X-WR-TIMEZONE:Europe/Berlin",
+    ...vevents,
+    "END:VCALENDAR",
+  ].join("\r\n");
+
+  const blob = new Blob([cal], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+}
+
+/**
+ * Export a single entry as .ics
+ */
+function exportSingleEntry(row) {
+  if (!row) return;
+  const safeName = (row.title || "eintrag").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40);
+  downloadIcs([rowToVevent(row)], `ROOTS_${safeName}.ics`);
+  toast("Kalendereintrag heruntergeladen (.ics)", "ok");
+}
+
+/**
+ * Export all currently visible entries as one .ics feed.
+ * Respects the active member filter (selectedMemberIds).
+ */
+function exportAllVisible() {
+  const rows = dbRows.filter((r) => {
+    if (!selectedMemberIds.size) return true;
+    return selectedMemberIds.has(r.member_id);
+  });
+  if (!rows.length) {
+    toast("Keine Einträge zum Exportieren", "err");
+    return;
+  }
+  const vevents = rows.map(rowToVevent);
+  downloadIcs(vevents, "ROOTS_Teamkalender.ics");
+  toast(`${rows.length} Einträge exportiert (.ics)`, "ok");
 }
 
 function isRootsProfileReady() {
@@ -762,11 +887,26 @@ async function init() {
   els.entryFormMain = document.getElementById("f-entry-form-main");
   els.formTypeRow = document.querySelector(".field-group-type");
   els.btnOpenUrlaubsplanung = document.getElementById("btn-open-urlaubsplanung");
+  els.btnIcalAll = document.getElementById("btn-ical-all");
+  els.btnIcalSingle = document.getElementById("btn-ical-single");
 
   if (els.formType) setFormTypeValue(els.formType.value || "krank");
 
   if (els.btnOpenUrlaubsplanung) {
     els.btnOpenUrlaubsplanung.addEventListener("click", openUrlaubsplanung);
+  }
+
+  // Global: export all visible entries as .ics
+  if (els.btnIcalAll) {
+    els.btnIcalAll.addEventListener("click", exportAllVisible);
+  }
+
+  // Single: export the currently open entry as .ics (shown only when editing)
+  if (els.btnIcalSingle) {
+    els.btnIcalSingle.addEventListener("click", () => {
+      const row = draftEventId ? dbRows.find((r) => r.id === draftEventId) : null;
+      exportSingleEntry(row);
+    });
   }
 
   if (els.formTypeChips) {

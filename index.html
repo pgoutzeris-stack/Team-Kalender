@@ -464,6 +464,24 @@
       font-weight: 500;
     }
     .btn-revision:hover { background: var(--brand); color: #fff; border-color: var(--brand); }
+    .btn-ical-export {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 0.68rem 1.1rem;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .btn-ical-export:hover { background: var(--brand-light, #eff6ff); border-color: var(--brand); color: var(--brand); }
+    .btn-ical-export i { font-size: 0.92rem; }
+    @media (max-width: 700px) { .btn-ical-label { display: none; } }
     @media (max-width: 980px) {
       .sop-header { min-height: 64px; padding: 12px; flex-wrap: wrap; }
       .sop-header .header-left { width: 100%; }
@@ -1379,6 +1397,10 @@
             <input type="search" class="dash-search" id="header-search" placeholder="Eintragsbezeichnung suchen" autocomplete="off" aria-expanded="false" aria-controls="search-spotlight" />
             <div id="search-spotlight" class="tk-search-spotlight" hidden role="listbox" aria-label="Suchergebnisse"></div>
           </div>
+          <button type="button" class="btn-ical-export" id="btn-ical-all" title="Alle sichtbaren Einträge als .ics herunterladen (kompatibel mit Outlook, Apple Kalender, Google Kalender)">
+            <i class="fa-solid fa-calendar-arrow-down" aria-hidden="true"></i>
+            <span class="btn-ical-label">Kalender exportieren</span>
+          </button>
           <button type="button" class="btn-primary" id="btn-new-entry" title="Eintrag erstellen">
             <i class="fa-solid fa-plus" aria-hidden="true"></i>
             Eintrag
@@ -1486,6 +1508,7 @@
       <footer class="entry-sheet__foot">
         <div class="entry-sheet__actions">
           <button type="button" class="btn-danger-ghost" id="btn-delete-entry" hidden>Löschen</button>
+          <button type="button" class="btn-ical-export" id="btn-ical-single" hidden title="Als Kalenderdatei herunterladen (.ics – kompatibel mit Outlook, Apple Kalender, Google Kalender)"><i class="fa-solid fa-calendar-arrow-down" aria-hidden="true"></i> Exportieren</button>
           <button type="button" class="btn-revision" id="m-cancel">Abbrechen</button>
           <button type="button" class="btn-done" id="m-done" disabled>Hinzufügen</button>
         </div>
