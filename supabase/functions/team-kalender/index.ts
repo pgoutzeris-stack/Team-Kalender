@@ -324,26 +324,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Urlaubskontingent für alle aktiven Mitarbeiter (admin/editor/member/reader)
-      if (url.searchParams.get("list") === "quota") {
-        const pub = publicServiceClient();
-        const { data: profiles, error: profErr } = await pub
-          .schema("users")
-          .from("profiles")
-          .select("id, full_name, urlaubstage, urlaubstage_jahr")
-          .in("app_role", ["admin", "editor", "member", "reader"])
-          .order("full_name");
-        if (profErr) throw profErr;
-
-        // Betriebsferien-Abzüge pro User aus roots_closure_assignments
-        const { data: closures } = await pub
-          .from("roots_closure_assignments")
-          .select("user_id, deducted_days");
-
-        const closureByUser: Record<string, number> = {};
-        for (const row of closures ?? []) {
-          closureByUser[row.user_id] = (closureByUser[row.user_id] ?? 0) + Number(row.deducted_days ?? 0);
-        }
 
         const quota = (profiles ?? []).map((p) => {
           const initial = Number(p.urlaubstage_jahr ?? 30);

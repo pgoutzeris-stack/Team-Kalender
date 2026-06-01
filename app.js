@@ -1208,8 +1208,6 @@ if (els.formTypeChips) {
     nrwHolidayRows = nrw || [];
     nrwDateSet = new Set(nrwHolidayRows.map((h) => h.holiday_date));
     initMemberFilter(Array.isArray(members) && members.length ? members : membersFromEventRows(dbRows));
-    // Urlaubskontingent-Anzeige (nur für Admins/Editoren sichtbar)
-    loadAndRenderQuota().catch(() => {});
   } catch (e) {
     console.error(e);
     toast("API: " + (e.message || "Fehler beim Laden"), "err");

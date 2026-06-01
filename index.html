@@ -1311,17 +1311,6 @@
     .tk-legend-swatch--dienstreise { background: #f59e0b; }
     .tk-legend-swatch--sonstiges { background: #475569; }
     .tk-legend-swatch--nrw { background: #e2e8f0; border-color: #cbd5e1; }
-    /* Urlaubskontingent Sidebar */
-    .tk-quota-panel { padding: 0.25rem 0 0; }
-    .tk-quota-list { display: flex; flex-direction: column; gap: 0.55rem; padding: 0.25rem 0.5rem 0.5rem; }
-    .tk-quota-row { display: flex; flex-direction: column; gap: 0.25rem; }
-    .tk-quota-name { font-size: 0.78rem; font-weight: 700; color: var(--ink); }
-    .tk-quota-bar-wrap { position: relative; height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
-    .tk-quota-bar { position: absolute; left: 0; top: 0; height: 100%; border-radius: 999px; background: var(--brand); transition: width 0.4s ease; }
-    .tk-quota-bar--betrieb { background: #94a3b8; }
-    .tk-quota-bar--used { background: #16a34a; }
-    .tk-quota-meta { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--muted); }
-    .tk-quota-remaining { font-weight: 700; color: var(--ink); }
     @media (prefers-color-scheme: dark) {
       .tk-select-trigger, .tk-select-menu { box-shadow: 0 1px 0 rgba(0,0,0,0.2); }
     }
@@ -1472,10 +1461,6 @@
             <span class="tk-legend-item"><span class="tk-legend-swatch tk-legend-swatch--dienstreise"></span> Dienstreise</span>
             <span class="tk-legend-item"><span class="tk-legend-swatch tk-legend-swatch--sonstiges"></span> Sonstiges</span>
             <span class="tk-legend-item"><span class="tk-legend-swatch tk-legend-swatch--nrw"></span> NRW-Feiertag</span>
-          </div>
-          <div class="tk-quota-panel" id="tk-quota-panel" hidden>
-            <div class="dash-nav-section">Urlaubskontingent</div>
-            <div id="tk-quota-list" class="tk-quota-list"></div>
           </div>
         </nav>
       </aside>
