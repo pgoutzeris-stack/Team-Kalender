@@ -464,24 +464,6 @@
       font-weight: 500;
     }
     .btn-revision:hover { background: var(--brand); color: #fff; border-color: var(--brand); }
-    .btn-ical-export {
-      background: var(--bg);
-      border: 1px solid var(--line);
-      color: var(--ink);
-      border-radius: 999px;
-      padding: 0.68rem 1.1rem;
-      font-size: 0.88rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      font-weight: 500;
-      white-space: nowrap;
-    }
-    .btn-ical-export:hover { background: var(--brand-light, #eff6ff); border-color: var(--brand); color: var(--brand); }
-    .btn-ical-export i { font-size: 0.92rem; }
-    @media (max-width: 700px) { .btn-ical-label { display: none; } }
     @media (max-width: 980px) {
       .sop-header { min-height: 64px; padding: 12px; flex-wrap: wrap; }
       .sop-header .header-left { width: 100%; }
@@ -622,9 +604,10 @@
       flex: 1 1 auto;
       display: flex;
       flex-direction: column;
-      gap: 1.6rem;
+      gap: 1.85rem;
     }
     .entry-block { display: flex; flex-direction: column; gap: 0.7rem; }
+    .entry-sonstiges-field { margin-bottom: 0.5rem; }
     .entry-block-label {
       margin: 0;
       font-size: 0.8rem;
@@ -1493,10 +1476,6 @@
             <input type="search" class="dash-search" id="header-search" placeholder="Eintragsbezeichnung suchen" autocomplete="off" aria-expanded="false" aria-controls="search-spotlight" />
             <div id="search-spotlight" class="tk-search-spotlight" hidden role="listbox" aria-label="Suchergebnisse"></div>
           </div>
-          <button type="button" class="btn-ical-export" id="btn-ical-all" title="Alle sichtbaren Einträge als .ics herunterladen (kompatibel mit Outlook, Apple Kalender, Google Kalender)">
-            <i class="fa-solid fa-calendar-arrow-down" aria-hidden="true"></i>
-            <span class="btn-ical-label">.ics exportieren</span>
-          </button>
           <button type="button" class="btn-primary" id="btn-new-entry" title="Eintrag erstellen">
             <i class="fa-solid fa-plus" aria-hidden="true"></i>
             Eintrag

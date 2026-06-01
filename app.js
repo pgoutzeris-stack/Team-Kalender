@@ -89,7 +89,6 @@ const els = {
   memberFilterList: null,
   memberSelectAll: null,
   memberSelectNone: null,
-  btnIcalAll: null,
 };
 
 const URLAUB_BLOCK_MSG =
@@ -1082,20 +1081,14 @@ async function init() {
   els.entryFormMain = document.getElementById("f-entry-form-main");
   els.formTypeRow = document.querySelector(".field-group-type");
   els.btnOpenUrlaubsplanung = document.getElementById("btn-open-urlaubsplanung");
-  els.btnIcalAll = document.getElementById("btn-ical-all");
-
-  if (els.formType) setFormTypeValue(els.formType.value || "krank");
+if (els.formType) setFormTypeValue(els.formType.value || "krank");
 
   if (els.btnOpenUrlaubsplanung) {
     els.btnOpenUrlaubsplanung.addEventListener("click", openUrlaubsplanung);
   }
 
   // Global: export all visible entries as .ics
-  if (els.btnIcalAll) {
-    els.btnIcalAll.addEventListener("click", exportAllVisible);
-  }
-
-  if (els.formTypeChips) {
+if (els.formTypeChips) {
     els.formTypeChips.addEventListener("click", (e) => {
       const btn = e.target && e.target.closest(".entry-type-card[data-type]");
       if (!btn) return;
