@@ -23,7 +23,7 @@ const TYPE_LABELS = {
 
 const TYPE_COLORS = {
   urlaub: { bg: "#16a34a", fg: "#ffffff" },
-  krank: { bg: "#dc2626", fg: "#ffffff" },
+  krank: { bg: "#b65f4a", fg: "#ffffff" },
   dienstreise: { bg: "#f59e0b", fg: "#0f172a" },
   sonstiges: { bg: "#475569", fg: "#ffffff" },
   betriebsferien: { bg: "#206efb", fg: "#ffffff" },
