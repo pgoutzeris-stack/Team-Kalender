@@ -434,8 +434,41 @@ Deno.serve(async (req) => {
         });
       }
 
+      if (url.searchParams.get("list") === "quota") {
+        const year = Number(url.searchParams.get("year") || new Date().getFullYear());
+        const pub = publicServiceClient();
+        const { data: profiles, error: profileErr } = await pub
+          .schema("users")
+          .from("profiles")
+          .select("id,full_name,email,urlaubstage,urlaubstage_jahr")
+          .order("full_name", { ascending: true });
+        if (profileErr) throw profileErr;
 
-        const quota = (profiles ?? []).map((p) => {
+        const { data: closureDays, error: closureErr } = await supa
+          .from("roots_closure_days")
+          .select("id")
+          .eq("calendar_year", year);
+        if (closureErr) throw closureErr;
+
+        const closureByUser: Record<string, number> = {};
+        const closureIds = (closureDays ?? []).map((d) => d.id).filter(Boolean);
+        if (closureIds.length) {
+          const { data: assignments, error: assignmentErr } = await pub
+            .from("roots_closure_assignments")
+            .select("user_id,deducted_days")
+            .in("closure_day_id", closureIds);
+          if (assignmentErr) throw assignmentErr;
+          for (const row of assignments ?? []) {
+            const userId = String(row.user_id || "");
+            if (!userId) continue;
+            closureByUser[userId] = (closureByUser[userId] ?? 0) + Number(row.deducted_days || 0);
+          }
+        }
+
+        const quota = (profiles ?? []).filter((p) => {
+          const email = String(p.email || "").toLowerCase();
+          return email && !email.endsWith("@test.de");
+        }).map((p) => {
           const initial = Number(p.urlaubstage_jahr ?? 30);
           const remaining = Number(p.urlaubstage ?? initial);
           const betrieb = closureByUser[p.id] ?? 0;
