@@ -145,9 +145,11 @@ type EventRow = {
   title: string | null;
   start_date: string;
   end_date: string;
+  day_part: string | null;
   note: string | null;
   created_at: string;
   is_system: boolean;
+  urlaub_request_id: string | null;
   team_members: { name: string; kuerzel: string | null } | null;
 };
 
@@ -233,15 +235,27 @@ async function loadApprovedUrlaubEventIds(): Promise<Set<string>> {
   const pub = publicServiceClient();
   const { data, error } = await pub
     .from("urlaub_requests")
-    .select("calendar_event_id")
-    .eq("status", "approved")
-    .not("calendar_event_id", "is", null);
+    .select("id,calendar_event_id")
+    .eq("status", "approved");
   if (error) throw error;
-  return new Set(
+  const ids = new Set(
     (data ?? [])
       .map((r) => String(r.calendar_event_id || ""))
       .filter(Boolean),
   );
+  const requestIds = (data ?? []).map((r) => String(r.id || "")).filter(Boolean);
+  if (requestIds.length) {
+    const kal = serviceClient();
+    const { data: linkedEvents, error: linkedErr } = await kal
+      .from("events")
+      .select("id")
+      .in("urlaub_request_id", requestIds);
+    if (linkedErr) throw linkedErr;
+    for (const ev of linkedEvents ?? []) {
+      if (ev.id) ids.add(String(ev.id));
+    }
+  }
+  return ids;
 }
 
 async function isApprovedUrlaubEvent(eventId: string): Promise<boolean> {
@@ -253,7 +267,26 @@ async function isApprovedUrlaubEvent(eventId: string): Promise<boolean> {
     .eq("status", "approved")
     .maybeSingle();
   if (error) throw error;
-  return Boolean(data);
+  if (data) return true;
+
+  const kal = serviceClient();
+  const { data: ev, error: evErr } = await kal
+    .from("events")
+    .select("urlaub_request_id")
+    .eq("id", eventId)
+    .not("urlaub_request_id", "is", null)
+    .maybeSingle();
+  if (evErr) throw evErr;
+  if (!ev?.urlaub_request_id) return false;
+
+  const { data: reqRow, error: reqErr } = await pub
+    .from("urlaub_requests")
+    .select("id")
+    .eq("id", ev.urlaub_request_id)
+    .eq("status", "approved")
+    .maybeSingle();
+  if (reqErr) throw reqErr;
+  return Boolean(reqRow);
 }
 
 function systemBlockedResponse(c: Record<string, string>) {
@@ -271,6 +304,7 @@ function eventOut(e: EventRow, approvedUrlaubIds?: Set<string>) {
     title: e.title,
     start_date: e.start_date,
     end_date: e.end_date,
+    day_part: e.day_part ?? "full",
     note: e.note,
     created_at: e.created_at,
     is_system: Boolean(e.is_system),
@@ -278,6 +312,82 @@ function eventOut(e: EventRow, approvedUrlaubIds?: Set<string>) {
     member_name: e.team_members?.name ?? null,
     member_kuerzel: e.team_members?.kuerzel ?? null,
   };
+}
+
+function normalizeDayPart(value: unknown): "full" | "am" | "pm" {
+  const v = String(value ?? "full").trim().toLowerCase();
+  if (v === "am" || v === "pm") return v;
+  return "full";
+}
+
+function parseYmd(ymd: string): Date {
+  return new Date(`${ymd}T12:00:00`);
+}
+
+function addDaysYmd(ymd: string, n: number): string {
+  const d = parseYmd(ymd);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function isWeekendYmd(ymd: string): boolean {
+  const wd = parseYmd(ymd).getDay();
+  return wd === 0 || wd === 6;
+}
+
+function* eachDayYmd(start: string, end: string): Generator<string> {
+  let cur = start;
+  while (cur <= end) {
+    yield cur;
+    cur = addDaysYmd(cur, 1);
+  }
+}
+
+async function loadHolidayMap(
+  kal: ReturnType<typeof createClient>,
+  start: string,
+  end: string,
+): Promise<Map<string, string>> {
+  const { data, error } = await kal
+    .from("nrw_holidays")
+    .select("holiday_date,label")
+    .gte("holiday_date", start)
+    .lte("holiday_date", end);
+  if (error) throw error;
+  const map = new Map<string, string>();
+  for (const h of data ?? []) {
+    map.set(String(h.holiday_date).slice(0, 10), String(h.label));
+  }
+  return map;
+}
+
+function splitWorkingDaySegments(
+  start: string,
+  end: string,
+  holidays: Map<string, string>,
+): Array<{ start_date: string; end_date: string }> {
+  const segments: Array<{ start_date: string; end_date: string }> = [];
+  let currentStart: string | null = null;
+  let previousWorking: string | null = null;
+
+  for (const day of eachDayYmd(start, end)) {
+    const isWorking = !isWeekendYmd(day) && !holidays.has(day);
+    if (!isWorking) {
+      if (currentStart && previousWorking) {
+        segments.push({ start_date: currentStart, end_date: previousWorking });
+      }
+      currentStart = null;
+      previousWorking = null;
+      continue;
+    }
+    if (!currentStart) currentStart = day;
+    previousWorking = day;
+  }
+
+  if (currentStart && previousWorking) {
+    segments.push({ start_date: currentStart, end_date: previousWorking });
+  }
+  return segments;
 }
 
 Deno.serve(async (req) => {
@@ -347,7 +457,7 @@ Deno.serve(async (req) => {
 
       const { data, error } = await supa
         .from("events")
-        .select("id,member_id,type,title,start_date,end_date,note,created_at,is_system,team_members(name,kuerzel)")
+        .select("id,member_id,type,title,start_date,end_date,day_part,note,created_at,is_system,urlaub_request_id,team_members(name,kuerzel)")
         .order("start_date", { ascending: true });
       if (error) throw error;
       const rows = (data ?? []) as EventRow[];
@@ -488,11 +598,77 @@ Deno.serve(async (req) => {
           });
         }
         const day_part_upd = String(body.day_part ?? existing?.day_part ?? "full");
+        if (type === "urlaub") {
+          const holidays = await loadHolidayMap(supa, start_date, end_date);
+          const segments = splitWorkingDaySegments(start_date, end_date, holidays);
+          const approvedUrlaubIds = await loadApprovedUrlaubEventIds();
+          const userId = existing?.member_id ? await userIdForMember(existing.member_id, supa) : null;
+          const oldDays = existing.type === "urlaub"
+            ? await countVacationDays(existing.start_date, existing.end_date, existing.day_part ?? "full", supa)
+            : 0;
+          const newDays = await countVacationDays(start_date, end_date, day_part_upd, supa);
+          if (!segments.length) {
+            const { error: delErr } = await supa.from("events").delete().eq("id", id);
+            if (delErr) throw delErr;
+            if (userId && oldDays) await adjustUrlaubstage(userId, -oldDays);
+            return new Response(JSON.stringify({ events: [] }), {
+              status: 200,
+              headers: { ...c, "Content-Type": "application/json" },
+            });
+          }
+
+          const first = segments[0];
+          const firstDayPart =
+            segments.length === 1 && first.start_date === first.end_date ? day_part_upd : "full";
+          const { data: updated, error: updateErr } = await supa
+            .from("events")
+            .update({
+              type,
+              title,
+              start_date: first.start_date,
+              end_date: first.end_date,
+              day_part: firstDayPart,
+              note,
+            })
+            .eq("id", id)
+            .select("id,member_id,type,title,start_date,end_date,day_part,note,created_at,is_system,urlaub_request_id,team_members(name,kuerzel)")
+            .single();
+          if (updateErr) throw updateErr;
+
+          const rows = [updated as EventRow];
+          if (segments.length > 1) {
+            const restPayload = segments.slice(1).map((segment) => ({
+              member_id: existing.member_id,
+              type,
+              title,
+              start_date: segment.start_date,
+              end_date: segment.end_date,
+              day_part: "full",
+              note,
+            }));
+            const { data: inserted, error: insertErr } = await supa
+              .from("events")
+              .insert(restPayload)
+              .select("id,member_id,type,title,start_date,end_date,day_part,note,created_at,is_system,urlaub_request_id,team_members(name,kuerzel)");
+            if (insertErr) throw insertErr;
+            rows.push(...((inserted ?? []) as EventRow[]));
+          }
+
+          if (userId) {
+            const delta = newDays - oldDays;
+            await adjustUrlaubstage(userId, delta);
+          }
+          const out = rows.map((e) => eventOut(e, approvedUrlaubIds));
+          return new Response(
+            JSON.stringify(out.length === 1 ? out[0] : { events: out }),
+            { status: 200, headers: { ...c, "Content-Type": "application/json" } },
+          );
+        }
         const { data, error } = await supa
           .from("events")
           .update({ type, title, start_date, end_date, note, day_part: day_part_upd })
           .eq("id", id)
-          .select("id,member_id,type,title,start_date,end_date,note,day_part,created_at,is_system,team_members(name,kuerzel)")
+          .select("id,member_id,type,title,start_date,end_date,day_part,note,created_at,is_system,urlaub_request_id,team_members(name,kuerzel)")
           .single();
         if (error) throw error;
 
@@ -576,15 +752,49 @@ Deno.serve(async (req) => {
           headers: { ...c, "Content-Type": "application/json" },
         });
       }
+      const day_part = String(body.day_part ?? "full");
       if (type === "urlaub") {
         const admin = await isRequestAdmin(req);
         if (!admin) return urlaubBlockedResponse(c);
+        const holidays = await loadHolidayMap(supa, start_date, end_date);
+        const segments = splitWorkingDaySegments(start_date, end_date, holidays);
+        if (!segments.length) {
+          return new Response(JSON.stringify({ events: [] }), {
+            status: 201,
+            headers: { ...c, "Content-Type": "application/json" },
+          });
+        }
+        const rowsToInsert = segments.map((segment) => ({
+          member_id,
+          type,
+          title,
+          start_date: segment.start_date,
+          end_date: segment.end_date,
+          day_part:
+            segments.length === 1 && segment.start_date === segment.end_date ? day_part : "full",
+          note,
+        }));
+        const { data, error } = await supa
+          .from("events")
+          .insert(rowsToInsert)
+          .select("id,member_id,type,title,start_date,end_date,day_part,note,created_at,is_system,urlaub_request_id,team_members(name,kuerzel)");
+        if (error) throw error;
+        const approvedUrlaubIds = await loadApprovedUrlaubEventIds();
+        const out = ((data ?? []) as EventRow[]).map((e) => eventOut(e, approvedUrlaubIds));
+        const userId = await userIdForMember(member_id, supa);
+        if (userId) {
+          const days = await countVacationDays(start_date, end_date, day_part, supa);
+          await adjustUrlaubstage(userId, days);
+        }
+        return new Response(
+          JSON.stringify(out.length === 1 ? out[0] : { events: out }),
+          { status: 201, headers: { ...c, "Content-Type": "application/json" } },
+        );
       }
-      const day_part = String(body.day_part ?? "full");
       const { data, error } = await supa
         .from("events")
-        .insert({ member_id, type, title, start_date, end_date, note, day_part })
-        .select("id,member_id,type,title,start_date,end_date,note,day_part,created_at,is_system,team_members(name,kuerzel)")
+        .insert({ member_id, type, title, start_date, end_date, day_part, note })
+        .select("id,member_id,type,title,start_date,end_date,day_part,note,created_at,is_system,urlaub_request_id,team_members(name,kuerzel)")
         .single();
       if (error) throw error;
 

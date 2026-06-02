@@ -765,11 +765,17 @@ async function persistEntry() {
         note,
       });
     }
-    const idx = dbRows.findIndex((r) => r.id === row.id);
-    if (idx >= 0) dbRows[idx] = row;
-    else dbRows.push(row);
+    const savedRows = Array.isArray(row?.events) ? row.events : row ? [row] : [];
+    if (!savedRows.length && draftEventId) {
+      dbRows = dbRows.filter((r) => r.id !== draftEventId);
+    }
+    for (const savedRow of savedRows) {
+      const idx = dbRows.findIndex((r) => r.id === savedRow.id);
+      if (idx >= 0) dbRows[idx] = savedRow;
+      else dbRows.push(savedRow);
+    }
     rebuildDbEvents();
-    setAutosaveStatus("Gespeichert", "ok");
+    setAutosaveStatus(savedRows.length ? "Gespeichert" : "Keine Urlaubstage im Zeitraum", "ok");
     return true;
   } catch (err) {
     console.error(err);
