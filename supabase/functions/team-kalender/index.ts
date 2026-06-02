@@ -126,7 +126,34 @@ async function adjustUrlaubstage(
 ): Promise<void> {
   if (!userId || delta === 0) return;
   const pub = publicServiceClient();
-  await pub.rpc("adjust_urlaubstage_by_delta", { p_user_id: userId, p_delta: delta });
+  const { error } = await pub.rpc("adjust_urlaubstage_by_delta", { p_user_id: userId, p_delta: delta });
+  if (error) throw error;
+}
+
+async function loadRemainingUrlaubstage(userId: string): Promise<number> {
+  const pub = publicServiceClient();
+  const { data, error } = await pub
+    .schema("users")
+    .from("profiles")
+    .select("urlaubstage")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  const remaining = Number(data?.urlaubstage ?? 0);
+  return Number.isFinite(remaining) ? Math.max(0, remaining) : 0;
+}
+
+async function ensureUrlaubstageAvailable(
+  userId: string | null,
+  requestedDelta: number,
+): Promise<void> {
+  if (!userId || requestedDelta <= 0) return;
+  const remaining = await loadRemainingUrlaubstage(userId);
+  if (requestedDelta > remaining) {
+    throw new Error(
+      `Nicht genug Urlaubstage (${remaining} verfügbar, ${requestedDelta} benötigt)`,
+    );
+  }
 }
 
 async function syncRootsClosures(userId: string) {
@@ -640,6 +667,7 @@ Deno.serve(async (req) => {
             ? await countVacationDays(existing.start_date, existing.end_date, existing.day_part ?? "full", supa)
             : 0;
           const newDays = await countVacationDays(start_date, end_date, day_part_upd, supa);
+          await ensureUrlaubstageAvailable(userId, newDays - oldDays);
           if (!segments.length) {
             const { error: delErr } = await supa.from("events").delete().eq("id", id);
             if (delErr) throw delErr;
@@ -716,6 +744,7 @@ Deno.serve(async (req) => {
               ? await countVacationDays(start_date, end_date, day_part_upd, supa)
               : 0;
             const delta = newDays - oldDays; // positiv = mehr Urlaub → abziehen, negativ → gutschreiben
+            await ensureUrlaubstageAvailable(userId, delta);
             await adjustUrlaubstage(userId, delta);
           }
         }
@@ -797,6 +826,9 @@ Deno.serve(async (req) => {
             headers: { ...c, "Content-Type": "application/json" },
           });
         }
+        const userId = await userIdForMember(member_id, supa);
+        const days = await countVacationDays(start_date, end_date, day_part, supa);
+        await ensureUrlaubstageAvailable(userId, days);
         const rowsToInsert = segments.map((segment) => ({
           member_id,
           type,
@@ -814,11 +846,7 @@ Deno.serve(async (req) => {
         if (error) throw error;
         const approvedUrlaubIds = await loadApprovedUrlaubEventIds();
         const out = ((data ?? []) as EventRow[]).map((e) => eventOut(e, approvedUrlaubIds));
-        const userId = await userIdForMember(member_id, supa);
-        if (userId) {
-          const days = await countVacationDays(start_date, end_date, day_part, supa);
-          await adjustUrlaubstage(userId, days);
-        }
+        if (userId) await adjustUrlaubstage(userId, days);
         return new Response(
           JSON.stringify(out.length === 1 ? out[0] : { events: out }),
           { status: 201, headers: { ...c, "Content-Type": "application/json" } },
