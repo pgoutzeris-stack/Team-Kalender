@@ -813,50 +813,64 @@
       background: var(--bg);
       flex-shrink: 0;
     }
+    /* Footer-Actions: Links destruktiv, rechts primär */
     .entry-sheet__actions {
-      display: grid;
-      grid-template-columns: auto auto minmax(0, 1fr) minmax(0, 1fr);
-      align-items: stretch;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       gap: 0.5rem;
-      min-width: 0;
     }
-    .entry-sheet__actions .btn-danger-ghost,
-    .entry-sheet__actions .btn-export-entry {
-      height: 48px;
-      padding: 0 1rem;
+    .entry-sheet__actions-left {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .entry-sheet__actions-right {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-left: auto;
+    }
+    /* Icon-only Buttons für destruktive Aktionen */
+    .btn-icon-action {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
       border: 1px solid var(--line);
-      border-radius: 14px;
-      background: var(--bg);
-      color: var(--danger);
-      font-size: 0.88rem;
-      font-weight: 600;
+      background: transparent;
       cursor: pointer;
       font-family: var(--font-ui);
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 0.45rem;
-      min-width: 48px;
-      white-space: nowrap;
+      font-size: 0.88rem;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      color: var(--muted, #64748b);
     }
-    .entry-sheet__actions .btn-export-entry { color: var(--brand); }
-    .entry-sheet__actions .btn-export-entry:hover { background: var(--brand-light); border-color: rgba(32, 110, 251, .25); }
+    .btn-icon-action.btn-danger-ghost { color: var(--danger, #ef4444); }
+    .btn-icon-action.btn-danger-ghost:hover { background: #fef2f2; border-color: var(--danger, #ef4444); }
+    .btn-icon-action.btn-export-entry { color: var(--brand); }
+    .btn-icon-action.btn-export-entry:hover { background: var(--brand-light, #eff6ff); border-color: var(--brand); }
+    /* Abbrechen */
     .entry-sheet__actions .btn-revision {
       min-width: 0;
-      height: 48px;
+      height: 42px;
+      padding: 0 1.1rem;
       justify-content: center;
-      border-radius: 14px;
-      font-size: 0.92rem;
+      border-radius: 12px;
+      font-size: 0.9rem;
       font-weight: 600;
     }
+    /* Hinzufügen */
     .entry-sheet__actions .btn-done {
       min-width: 0;
-      height: 48px;
+      height: 42px;
+      padding: 0 1.25rem;
       border: none;
-      border-radius: 14px;
+      border-radius: 12px;
       background: var(--brand);
       color: #fff;
-      font-size: 0.92rem;
+      font-size: 0.9rem;
       font-weight: 600;
       font-family: var(--font-ui);
       cursor: pointer;
@@ -864,7 +878,7 @@
       align-items: center;
       justify-content: center;
       gap: 0.4rem;
-      box-shadow: 0 4px 14px rgba(32, 110, 251, 0.28);
+      box-shadow: 0 4px 14px rgba(32, 110, 251, 0.25);
       transition: background 0.15s, transform 0.15s, opacity 0.15s;
     }
     .entry-sheet__actions .btn-done:hover:not(:disabled) {
@@ -877,23 +891,13 @@
       box-shadow: none;
     }
     @media (max-width: 430px) {
-      .entry-sheet__actions {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: .45rem;
+      .entry-sheet__actions-right .btn-revision {
+        padding-left: .8rem;
+        padding-right: .8rem;
       }
-      .entry-sheet__actions .btn-danger-ghost,
-      .entry-sheet__actions .btn-export-entry {
-        width: 100%;
-        padding: 0;
-      }
-      .entry-sheet__actions .btn-danger-ghost .btn-label,
-      .entry-sheet__actions .btn-export-entry .btn-label {
-        display: none;
-      }
-      .entry-sheet__actions .btn-revision,
-      .entry-sheet__actions .btn-done {
-        padding-left: .7rem;
-        padding-right: .7rem;
+      .entry-sheet__actions-right .btn-done {
+        padding-left: .9rem;
+        padding-right: .9rem;
       }
     }
 
@@ -1579,7 +1583,7 @@
           </div>
         </div>
 
-        <div class="entry-block">
+        <div class="entry-block" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--line,#e2e8f0)">
           <input
             class="entry-note-input"
             id="f-note"
@@ -1597,10 +1601,22 @@
 
       <footer class="entry-sheet__foot">
         <div class="entry-sheet__actions">
-          <button type="button" class="btn-danger-ghost" id="btn-delete-entry" hidden><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="btn-label">Löschen</span></button>
-          <button type="button" class="btn-export-entry" id="btn-export-entry" hidden><i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i><span class="btn-label">Exportieren</span></button>
-          <button type="button" class="btn-revision" id="m-cancel">Abbrechen</button>
-          <button type="button" class="btn-done" id="m-done" disabled>Hinzufügen</button>
+          <!-- Links: destruktive Aktionen als schlanke Icon-Buttons -->
+          <div class="entry-sheet__actions-left">
+            <button type="button" class="btn-icon-action btn-danger-ghost" id="btn-delete-entry" hidden title="Eintrag löschen" aria-label="Löschen">
+              <i class="fa-solid fa-trash" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="btn-icon-action btn-export-entry" id="btn-export-entry" hidden title="Als ICS exportieren" aria-label="Exportieren">
+              <i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i>
+            </button>
+          </div>
+          <!-- Rechts: primäre Aktionen -->
+          <div class="entry-sheet__actions-right">
+            <button type="button" class="btn-revision" id="m-cancel">Abbrechen</button>
+            <button type="button" class="btn-done" id="m-done" disabled>
+              <i class="fa-solid fa-check" aria-hidden="true"></i> Hinzufügen
+            </button>
+          </div>
         </div>
       </footer>
     </div>
