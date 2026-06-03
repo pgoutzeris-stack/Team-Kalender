@@ -55,6 +55,8 @@ let saveBusy = false;
 let teamMembers = [];
 /** @type {Set<string>} */
 let selectedMemberIds = new Set();
+let liveRefreshTimer = null;
+let liveRefreshListenersReady = false;
 
 const els = {
   cal: null,
@@ -416,8 +418,29 @@ function membersFromEventRows(rows) {
 }
 
 function initMemberFilter(members) {
-  teamMembers = (Array.isArray(members) ? members : []).filter(isRealMember);
-  selectedMemberIds = new Set(teamMembers.map((m) => m.id));
+  syncMemberFilter(members, { reset: true });
+}
+
+function syncMemberFilter(members, { reset = false, selectNew = true } = {}) {
+  const nextMembers = (Array.isArray(members) ? members : [])
+    .filter(isRealMember)
+    .sort((a, b) => (a.name || "").localeCompare(b.name || "", "de"));
+  const previousMemberIds = new Set(teamMembers.map((m) => m.id));
+  const nextMemberIds = new Set(nextMembers.map((m) => m.id));
+  const shouldSelectAll = reset || teamMembers.length === 0;
+
+  if (shouldSelectAll) {
+    selectedMemberIds = new Set(nextMemberIds);
+  } else {
+    selectedMemberIds = new Set([...selectedMemberIds].filter((id) => nextMemberIds.has(id)));
+    if (selectNew) {
+      nextMembers.forEach((member) => {
+        if (!previousMemberIds.has(member.id)) selectedMemberIds.add(member.id);
+      });
+    }
+  }
+
+  teamMembers = nextMembers;
   renderMemberFilterList();
 }
 
@@ -1089,8 +1112,43 @@ function rebuildNrwEvents() {
 }
 
 async function reloadEvents() {
-  dbRows = await fetchAllEvents();
+  const [events, members] = await Promise.all([
+    fetchAllEvents(),
+    fetchTeamMembers().catch(() => null),
+  ]);
+  dbRows = events || [];
+  const nextMembers = Array.isArray(members) && members.length ? members : membersFromEventRows(dbRows);
+  syncMemberFilter(nextMembers, { selectNew: true });
   rebuildDbEvents();
+}
+
+async function refreshCalendarFromServer() {
+  if (!calendar) return;
+  try {
+    await reloadEvents();
+  } catch (err) {
+    console.error("[team-kalender] Live-Refresh fehlgeschlagen", err);
+  }
+}
+
+function startLiveRefresh() {
+  if (liveRefreshTimer) clearInterval(liveRefreshTimer);
+  liveRefreshTimer = setInterval(() => {
+    if (!document.hidden) refreshCalendarFromServer();
+  }, 15000);
+
+  if (liveRefreshListenersReady) return;
+  liveRefreshListenersReady = true;
+  window.addEventListener("focus", refreshCalendarFromServer);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refreshCalendarFromServer();
+  });
+  window.addEventListener("message", (event) => {
+    const type = event.data?.type;
+    if (type === "roots-refresh-team-calendar" || type === "roots-vacation-approved") {
+      refreshCalendarFromServer();
+    }
+  });
 }
 
 async function init() {
@@ -1339,6 +1397,7 @@ if (els.formTypeChips) {
   rebuildNrwEvents();
   rebuildDbEvents();
   syncViewButtons();
+  startLiveRefresh();
 
   els.btnViewMonth.addEventListener("click", () => calendar.changeView("dayGridMonth"));
   els.btnViewYear.addEventListener("click", () => calendar.changeView("multiMonthYear"));
