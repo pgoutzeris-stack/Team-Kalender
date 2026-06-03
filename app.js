@@ -57,6 +57,8 @@ let teamMembers = [];
 let selectedMemberIds = new Set();
 let liveRefreshTimer = null;
 let liveRefreshListenersReady = false;
+let realtimeChannel = null;
+let realtimeRefreshTimer = null;
 
 const els = {
   cal: null,
@@ -1131,11 +1133,56 @@ async function refreshCalendarFromServer() {
   }
 }
 
+function queueRealtimeRefresh() {
+  clearTimeout(realtimeRefreshTimer);
+  realtimeRefreshTimer = setTimeout(refreshCalendarFromServer, 120);
+}
+
+async function startRealtimeSubscription() {
+  const sb = window.RootsUser?._sb;
+  if (!sb || typeof sb.channel !== "function") return false;
+
+  if (realtimeChannel) {
+    try {
+      await sb.removeChannel(realtimeChannel);
+    } catch (err) {
+      console.warn("[team-kalender] Alte Realtime-Verbindung konnte nicht entfernt werden", err);
+    }
+    realtimeChannel = null;
+  }
+
+  try {
+    const {
+      data: { session },
+    } = await sb.auth.getSession();
+    if (session?.access_token && typeof sb.realtime?.setAuth === "function") {
+      sb.realtime.setAuth(session.access_token);
+    }
+  } catch (err) {
+    console.warn("[team-kalender] Realtime Auth konnte nicht aktualisiert werden", err);
+  }
+
+  realtimeChannel = sb
+    .channel("team-calendar", { config: { private: true } })
+    .on("broadcast", { event: "INSERT" }, queueRealtimeRefresh)
+    .on("broadcast", { event: "UPDATE" }, queueRealtimeRefresh)
+    .on("broadcast", { event: "DELETE" }, queueRealtimeRefresh)
+    .subscribe((status, err) => {
+      if (status === "SUBSCRIBED") {
+        console.info("[team-kalender] Realtime verbunden");
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        console.warn("[team-kalender] Realtime Status", status, err || "");
+      }
+    });
+  return true;
+}
+
 function startLiveRefresh() {
   if (liveRefreshTimer) clearInterval(liveRefreshTimer);
   liveRefreshTimer = setInterval(() => {
     if (!document.hidden) refreshCalendarFromServer();
-  }, 15000);
+  }, 60000);
+  startRealtimeSubscription();
 
   if (liveRefreshListenersReady) return;
   liveRefreshListenersReady = true;
@@ -1148,6 +1195,10 @@ function startLiveRefresh() {
     if (type === "roots-refresh-team-calendar" || type === "roots-vacation-approved") {
       refreshCalendarFromServer();
     }
+  });
+  window.addEventListener("beforeunload", () => {
+    const sb = window.RootsUser?._sb;
+    if (sb && realtimeChannel) sb.removeChannel(realtimeChannel);
   });
 }
 
@@ -1482,10 +1533,12 @@ if (els.formTypeChips) {
 
   document.addEventListener("roots-profile-ready", () => {
     refreshAdminState();
-    resolveCurrentMember().catch((e) => {
-      console.error(e);
-      toast(e.message || "Profil konnte nicht geladen werden", "err");
-    });
+    resolveCurrentMember()
+      .then(() => startRealtimeSubscription())
+      .catch((e) => {
+        console.error(e);
+        toast(e.message || "Profil konnte nicht geladen werden", "err");
+      });
   });
 }
 
