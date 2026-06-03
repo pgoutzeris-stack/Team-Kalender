@@ -1697,9 +1697,21 @@
   function onSessionReady(session){
     if(session){
       hideAuthOverlay();
-      window.RootsUser._loadAndMount(sb).then(()=>{
-        document.dispatchEvent(new CustomEvent('roots-profile-ready'));
-      });
+      // Guard: RootsUser könnte noch nicht geladen sein (race condition)
+      if(window.RootsUser && typeof window.RootsUser._loadAndMount === 'function'){
+        window.RootsUser._loadAndMount(sb).then(()=>{
+          document.dispatchEvent(new CustomEvent('roots-profile-ready'));
+        });
+      } else {
+        // Retry nach kurzem Delay damit Bridge fertig laden kann
+        setTimeout(()=>{
+          if(window.RootsUser && typeof window.RootsUser._loadAndMount === 'function'){
+            window.RootsUser._loadAndMount(sb).then(()=>{
+              document.dispatchEvent(new CustomEvent('roots-profile-ready'));
+            });
+          }
+        }, 300);
+      }
     }
   }
   sb.auth.getSession().then(({data:{session}})=>{
