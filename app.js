@@ -1477,7 +1477,31 @@ if (els.formTypeChips) {
   }
 
   if (els.btnDeleteEntry) {
-    els.btnDeleteEntry.addEventListener("click", async () => {
+    
+// ── Promise-based confirm (replaces window.confirm) ─────────────────────────
+function kalConfirm() {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('tk-delete-confirm-modal');
+    if (!overlay) { resolve(window.confirm('Eintrag wirklich löschen?')); return; }
+    overlay.classList.add('is-open');
+    const ok     = document.getElementById('btn-tk-delete-ok');
+    const cancel = document.getElementById('btn-tk-delete-cancel');
+    const onOk     = () => { cleanup(); resolve(true); };
+    const onCancel = () => { cleanup(); resolve(false); };
+    const onKey    = e => { if (e.key === 'Escape') { cleanup(); resolve(false); } };
+    function cleanup() {
+      overlay.classList.remove('is-open');
+      ok.removeEventListener('click', onOk);
+      cancel.removeEventListener('click', onCancel);
+      document.removeEventListener('keydown', onKey);
+    }
+    ok.addEventListener('click', onOk);
+    cancel.addEventListener('click', onCancel);
+    document.addEventListener('keydown', onKey);
+  });
+}
+
+els.btnDeleteEntry.addEventListener("click", async () => {
       if (!draftEventId) return;
       const row = dbRows.find((r) => r.id === draftEventId);
       if (isReadOnlyEntry(row)) {
@@ -1485,7 +1509,7 @@ if (els.formTypeChips) {
         openEntryModal(null, row);
         return;
       }
-      if (!confirm("Eintrag wirklich löschen?")) return;
+      if (!(await kalConfirm())) return;
       try {
         await deleteEventById(draftEventId);
         dbRows = dbRows.filter((r) => r.id !== draftEventId);

@@ -496,6 +496,17 @@
       padding: 0;
     }
     .tk-modal-overlay.is-open { display: flex; }
+    .tk-confirm-modal { align-items: center; justify-content: center; }
+    .tk-confirm-box { background: var(--c-surface, #fff); border-radius: 20px; border: 1px solid var(--c-line, #e2e8f0); box-shadow: 0 20px 60px rgba(15,23,42,.18); max-width: 360px; width: 100%; animation: entry-slide-in .24s cubic-bezier(.22,1,.36,1); overflow: hidden; }
+    .tk-confirm-body { text-align: center; padding: 1.5rem 1.5rem 1rem; }
+    .tk-confirm-icon { width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;margin:0 auto .75rem;background:#fef2f2;color:#dc2626; }
+    .tk-confirm-title { font-size:1rem; font-weight:700; color: var(--c-ink, #1e293b); display: block; margin-bottom:.4rem; }
+    .tk-confirm-desc  { font-size:.875rem; color: var(--c-muted, #64748b); line-height:1.5; }
+    .tk-confirm-foot  { display:flex; gap:.6rem; justify-content:center; padding: 0 1.5rem 1.5rem; }
+    .tk-confirm-cancel { flex:1; padding:.7rem 1rem; border:1px solid var(--c-line,#e2e8f0); border-radius:10px; background:transparent; font-family:inherit; font-weight:600; font-size:.875rem; color:var(--c-ink,#1e293b); cursor:pointer; transition:all .15s; }
+    .tk-confirm-cancel:hover { border-color:#206efb; color:#206efb; }
+    .tk-confirm-ok    { flex:1; padding:.7rem 1rem; border:none; border-radius:10px; background:#dc2626; font-family:inherit; font-weight:600; font-size:.875rem; color:#fff; cursor:pointer; transition:opacity .15s; }
+    .tk-confirm-ok:hover { opacity:.88; }
     @media (min-width: 560px) {
       .tk-modal-overlay {
         align-items: center;
@@ -1987,5 +1998,20 @@ window.RootsUser = window.RootsUser || {
 };
 </script>
 <script src="https://pgoutzeris-stack.github.io/ROOTS_Intranet/roots-user-bridge.js?v=20260601-final"></script>
+
+<!-- ── Delete Confirm Modal ── -->
+<div class="tk-modal-overlay tk-confirm-modal" id="tk-delete-confirm-modal" aria-hidden="true">
+  <div class="tk-confirm-box" role="dialog">
+    <div class="tk-confirm-body">
+      <div class="tk-confirm-icon"><i class="fa-solid fa-trash"></i></div>
+      <span class="tk-confirm-title">Eintrag löschen?</span>
+      <p class="tk-confirm-desc">Dieser Kalendereintrag wird dauerhaft entfernt und kann nicht wiederhergestellt werden.</p>
+    </div>
+    <div class="tk-confirm-foot">
+      <button type="button" class="tk-confirm-cancel" id="btn-tk-delete-cancel">Abbrechen</button>
+      <button type="button" class="tk-confirm-ok" id="btn-tk-delete-ok"><i class="fa-solid fa-trash"></i> Löschen</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
