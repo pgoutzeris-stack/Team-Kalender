@@ -6,6 +6,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ROOTS Consulting - Team-Kalender</title>
+  <script>
+  try {
+    if (window.self !== window.top && new URLSearchParams(window.location.search).get('authBroker') === 'v1') {
+      window.ROOTS_TOKENLESS_EMBED = true;
+    }
+  } catch (_) {}
+  </script>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -1673,14 +1680,16 @@
   <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
   <!-- FullCalendar v6: offizielles Global-Bundle (vermeidet ESM/Preact „Class constructor … new“) -->
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+  <script src="https://pgoutzeris-stack.github.io/ROOTS_Intranet/roots-user-bridge.js?v=20260722-team-calendar"></script>
   <script type="module" src="./app.js"></script>
 <script>
 (function(){
   const SB_URL='https://csmguwcvzreefluhahyu.supabase.co';
   const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzbWd1d2N2enJlZWZsdWhhaHl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NjM0ODcsImV4cCI6MjA5MjUzOTQ4N30.Fiafx7XBaQZXUX3bKQIBH7znBHx3B51yL-bftOHsL4Q';
   const {createClient}=window.supabase;
-  const sb=createClient(SB_URL,SB_ANON);
-  window.__rootsSupabaseClient=sb;
+  const TOKENLESS_EMBED=window.ROOTS_TOKENLESS_EMBED===true;
+  const sb=TOKENLESS_EMBED?null:createClient(SB_URL,SB_ANON);
+  if(sb)window.__rootsSupabaseClient=sb;
   const overlay=document.getElementById('roots-auth-overlay');
   const vLogin=document.getElementById('roots-view-login');
   const vForgot=document.getElementById('roots-view-forgot');
@@ -1727,19 +1736,31 @@
       }
     }
   }
-  sb.auth.getSession().then(({data:{session}})=>{
-    if(session)onSessionReady(session);
-    else{resetLoginUi();}
-  });
-  sb.auth.onAuthStateChange((event,session)=>{
-    if(session)onSessionReady(session);
-    else if(event==='SIGNED_OUT'){
-      showAuthOverlay();
-      if(window.RootsUser){window.RootsUser._uid=null;window.RootsUser._p=null;}
-    }
-  });
+  if(TOKENLESS_EMBED){
+    window.RootsUserBridge.request('user-context').then((context)=>{
+      if(!context?.user?.id)throw new Error('Nicht angemeldet');
+      window.RootsUser._uid=context.user.id;
+      window.RootsUser._p=context.profile||{id:context.user.id,email:context.user.email,app_role:'reader'};
+      window.RootsUser._mount();
+      hideAuthOverlay();
+      document.dispatchEvent(new CustomEvent('roots-profile-ready'));
+    }).catch(()=>showAuthOverlay());
+  }else{
+    sb.auth.getSession().then(({data:{session}})=>{
+      if(session)onSessionReady(session);
+      else{resetLoginUi();}
+    });
+    sb.auth.onAuthStateChange((event,session)=>{
+      if(session)onSessionReady(session);
+      else if(event==='SIGNED_OUT'){
+        showAuthOverlay();
+        if(window.RootsUser){window.RootsUser._uid=null;window.RootsUser._p=null;}
+      }
+    });
+  }
   document.getElementById('roots-login-form').addEventListener('submit',async(e)=>{
     e.preventDefault();
+    if(!sb)return;
     const email=document.getElementById('roots-email').value.trim();
     const pw=document.getElementById('roots-password').value;
     const btn=document.getElementById('roots-login-btn');
@@ -1753,6 +1774,7 @@
   });
   document.getElementById('roots-forgot-form').addEventListener('submit',async(e)=>{
     e.preventDefault();
+    if(!sb)return;
     const email=document.getElementById('roots-reset-email').value.trim();
     const btn=document.getElementById('roots-reset-btn');
     const errEl=document.getElementById('roots-reset-error');
@@ -1999,8 +2021,6 @@ window.RootsUser = window.RootsUser || {
   }
 };
 </script>
-<script src="https://pgoutzeris-stack.github.io/ROOTS_Intranet/roots-user-bridge.js?v=20260601-final"></script>
-
 <!-- ── Delete Confirm Modal ── -->
 <div class="tk-modal-overlay tk-confirm-modal" id="tk-delete-confirm-modal" aria-hidden="true">
   <div class="tk-confirm-box" role="dialog">

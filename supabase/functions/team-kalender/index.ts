@@ -436,6 +436,15 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
 
   try {
+    const requestUser = await getAuthUser(req);
+    if (!requestUser) {
+      return new Response(JSON.stringify({ error: "Nicht angemeldet" }), {
+        status: 401,
+        headers: { ...c, "Content-Type": "application/json" },
+      });
+    }
+    const requestIsAdmin = await isRequestAdmin(req);
+
     if (req.method === "GET") {
       if (url.searchParams.get("list") === "nrw_holidays") {
         const { data, error } = await supa
@@ -462,6 +471,12 @@ Deno.serve(async (req) => {
       }
 
       if (url.searchParams.get("list") === "quota") {
+        if (!requestIsAdmin) {
+          return new Response(JSON.stringify({ error: "Adminrechte erforderlich" }), {
+            status: 403,
+            headers: { ...c, "Content-Type": "application/json" },
+          });
+        }
         const year = Number(url.searchParams.get("year") || new Date().getFullYear());
         const pub = publicServiceClient();
         const { data: profiles, error: profileErr } = await pub
@@ -541,6 +556,12 @@ Deno.serve(async (req) => {
             JSON.stringify({ error: "user_id und name erforderlich" }),
             { status: 400, headers: { ...c, "Content-Type": "application/json" } },
           );
+        }
+        if (user_id !== requestUser.id && !requestIsAdmin) {
+          return new Response(JSON.stringify({ error: "Fremdes Profil nicht erlaubt" }), {
+            status: 403,
+            headers: { ...c, "Content-Type": "application/json" },
+          });
         }
         await syncRootsClosures(user_id);
         const kuerzel = await profileKuerzel(user_id, name);
@@ -633,6 +654,15 @@ Deno.serve(async (req) => {
         if (!existing) {
           return new Response(JSON.stringify({ error: "Eintrag nicht gefunden" }), {
             status: 404,
+            headers: { ...c, "Content-Type": "application/json" },
+          });
+        }
+        const existingUserId = existing.member_id
+          ? await userIdForMember(existing.member_id, supa)
+          : null;
+        if (existingUserId !== requestUser.id && !requestIsAdmin) {
+          return new Response(JSON.stringify({ error: "Nur eigene Einträge können bearbeitet werden" }), {
+            status: 403,
             headers: { ...c, "Content-Type": "application/json" },
           });
         }
@@ -758,6 +788,12 @@ Deno.serve(async (req) => {
       }
 
       if (kind === "member") {
+        if (!requestIsAdmin) {
+          return new Response(JSON.stringify({ error: "Adminrechte erforderlich" }), {
+            status: 403,
+            headers: { ...c, "Content-Type": "application/json" },
+          });
+        }
         const name = String(body.name ?? "").trim();
         if (name.length < 1) {
           return new Response(
@@ -815,6 +851,13 @@ Deno.serve(async (req) => {
         });
       }
       const day_part = String(body.day_part ?? "full");
+      const targetUserId = await userIdForMember(member_id, supa);
+      if (targetUserId !== requestUser.id && !requestIsAdmin) {
+        return new Response(JSON.stringify({ error: "Nur eigene Einträge können erstellt werden" }), {
+          status: 403,
+          headers: { ...c, "Content-Type": "application/json" },
+        });
+      }
       if (type === "urlaub") {
         const admin = await isRequestAdmin(req);
         if (!admin) return urlaubBlockedResponse(c);
@@ -886,6 +929,12 @@ Deno.serve(async (req) => {
       }
       const target = (url.searchParams.get("target") ?? "event").toLowerCase();
       if (target === "member") {
+        if (!requestIsAdmin) {
+          return new Response(JSON.stringify({ error: "Adminrechte erforderlich" }), {
+            status: 403,
+            headers: { ...c, "Content-Type": "application/json" },
+          });
+        }
         const { count, error: cErr } = await supa
           .from("events")
           .select("id", { count: "exact", head: true })
@@ -912,6 +961,13 @@ Deno.serve(async (req) => {
         .eq("id", id)
         .maybeSingle();
       if (evLoadErr) throw evLoadErr;
+      const eventUserId = evRow?.member_id ? await userIdForMember(evRow.member_id, supa) : null;
+      if (eventUserId !== requestUser.id && !requestIsAdmin) {
+        return new Response(JSON.stringify({ error: "Nur eigene Einträge können gelöscht werden" }), {
+          status: 403,
+          headers: { ...c, "Content-Type": "application/json" },
+        });
+      }
       if (evRow?.is_system) {
         return systemBlockedResponse(c);
       }

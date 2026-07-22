@@ -5,6 +5,7 @@ import { TEAM_KALENDER_API_URL } from "./config.js";
 
 /** @type {() => Promise<string|null>} */
 let getAccessToken = async () => null;
+const TOKENLESS_EMBED = window.ROOTS_TOKENLESS_EMBED === true;
 
 /** @param {{ getAccessToken?: () => Promise<string|null> }} opts */
 export function initTeamKalenderApi(opts = {}) {
@@ -18,7 +19,14 @@ export function initTeamKalenderApi(opts = {}) {
  * @param {string} [pathAndQuery] z. B. "" oder "?list=members"
  * @param {object | null} body
  */
-async function apiJson(method, pathAndQuery, body) {
+export async function apiJson(method, pathAndQuery, body) {
+  if (TOKENLESS_EMBED) {
+    return window.RootsUserBridge.request("team-calendar", {
+      method,
+      query: pathAndQuery || "",
+      body,
+    });
+  }
   const u = pathAndQuery
     ? `${TEAM_KALENDER_API_URL}${String(pathAndQuery).startsWith("?") ? pathAndQuery : `?${pathAndQuery}`}`
     : TEAM_KALENDER_API_URL;
