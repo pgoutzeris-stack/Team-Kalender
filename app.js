@@ -11,6 +11,7 @@ import {
   updateEvent,
   deleteEventById,
   initTeamKalenderApi,
+  apiJson,
 } from "./supabase-events.js";
 
 const TYPE_LABELS = {
@@ -59,6 +60,7 @@ let liveRefreshTimer = null;
 let liveRefreshListenersReady = false;
 let realtimeChannel = null;
 let realtimeRefreshTimer = null;
+const TEAM_CALENDAR_TOKENLESS = window.ROOTS_TOKENLESS_EMBED === true;
 
 const els = {
   cal: null,
@@ -1139,6 +1141,7 @@ function queueRealtimeRefresh() {
 }
 
 async function startRealtimeSubscription() {
+  if (TEAM_CALENDAR_TOKENLESS) return false;
   const sb = window.RootsUser?._sb;
   if (!sb || typeof sb.channel !== "function") return false;
 
@@ -1191,6 +1194,7 @@ function startLiveRefresh() {
     if (!document.hidden) refreshCalendarFromServer();
   });
   window.addEventListener("message", (event) => {
+    if (event.source !== window.parent || event.origin !== "https://pgoutzeris-stack.github.io") return;
     const type = event.data?.type;
     if (type === "roots-refresh-team-calendar" || type === "roots-vacation-approved") {
       refreshCalendarFromServer();
