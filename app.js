@@ -1184,7 +1184,7 @@ function startLiveRefresh() {
   if (liveRefreshTimer) clearInterval(liveRefreshTimer);
   liveRefreshTimer = setInterval(() => {
     if (!document.hidden) refreshCalendarFromServer();
-  }, 60000);
+  }, 15000);
   startRealtimeSubscription();
 
   if (liveRefreshListenersReady) return;
