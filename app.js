@@ -316,7 +316,7 @@ function toYmd(d) {
 }
 
 function formatYmdDe(ymd) {
-  if (!ymd || ymd.length < 10) return "—";
+  if (!ymd || ymd.length < 10) return "-";
   const d = new Date(ymd + "T12:00:00");
   if (Number.isNaN(d.getTime())) return ymd;
   return d.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
@@ -346,7 +346,7 @@ function entryDisplayTitle(row) {
 function rowToFcEvent(row) {
   const t = row.type === "homeoffice" ? "sonstiges" : row.type;
   const col = TYPE_COLORS[t] || TYPE_COLORS.sonstiges;
-  const n = row.member_name || currentMemberName || "—";
+  const n = row.member_name || currentMemberName || "-";
   const displayTitle = entryDisplayTitleWithDayPart(row);
   return {
     id: `db-${row.id}`,
@@ -518,9 +518,9 @@ function eachDateInInclusiveRange(startYmd, endYmd) {
 }
 
 function formatDateRangeShort(startD, endD) {
-  if (!startD) return "—";
+  if (!startD) return "-";
   if (!endD || endD === startD) return formatYmdDe(startD);
-  return `${formatYmdDe(startD)} – ${formatYmdDe(endD)}`;
+  return `${formatYmdDe(startD)} - ${formatYmdDe(endD)}`;
 }
 
 function compactYmdForCalendar(ymd, addDays = 0) {
@@ -842,7 +842,7 @@ function openEntryModal(preset, editRow) {
 
   if (readOnly) {
     const msg = isClosure
-      ? `<i class="fa-solid fa-building" aria-hidden="true"></i> <strong>${formatYmdDe(editRow.start_date)}</strong> – ${escapeHtml(editRow.title || "Betriebsferien")}. Änderungen nur in den Einstellungen der Urlaubsplanung (Admin).`
+      ? `<i class="fa-solid fa-building" aria-hidden="true"></i> <strong>${formatYmdDe(editRow.start_date)}</strong> - ${escapeHtml(editRow.title || "Betriebsferien")}. Änderungen nur in den Einstellungen der Urlaubsplanung (Admin).`
       : `<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Genehmigter Urlaub: <strong>${formatYmdDe(editRow.start_date)} – ${formatYmdDe(editRow.end_date)}</strong>. Änderungen nur über die Urlaubsplanung.`;
     showUrlaubNotice(true, msg);
     if (els.formNote) els.formNote.value = editRow.note || "";

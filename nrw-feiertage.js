@@ -1,5 +1,5 @@
 /**
- * NRW Feiertage 2025–2030 (statisch).
+ * NRW Feiertage 2025-2030 (statisch).
  * Ostersonntage: nach astronomischer Berechnung / amtlichen Listen.
  * Bewegliche Feiertage: relativ zu Ostern.
  */

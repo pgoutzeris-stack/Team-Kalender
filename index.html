@@ -1413,7 +1413,7 @@
     </div>
     <div id="roots-view-forgot" style="display:none">
       <h1 class="roots-card-title">Passwort zurücksetzen</h1>
-      <p class="roots-card-sub">Gib deine E-Mail ein – wir schicken dir einen Link.</p>
+      <p class="roots-card-sub">Gib deine E-Mail ein - wir schicken dir einen Link.</p>
       <div id="roots-reset-error" class="roots-alert roots-alert-error">
         <i class="fa-solid fa-circle-exclamation"></i><span id="roots-reset-error-text"></span>
       </div>
@@ -1994,7 +1994,7 @@ window.RootsUser = window.RootsUser || {
     const btn=document.getElementById('rus-save');
     const msg=document.getElementById('rus-msg');
     const showMsg=(text,ok)=>{if(!msg)return;msg.style.cssText='display:block;font-size:.85rem;text-align:center;margin-top:.5rem;padding:.5rem;border-radius:8px;background:'+(ok?'#ecfdf5':'#fef2f2')+';color:'+(ok?'#10b981':'#dc2626');msg.textContent=text;};
-    if(!this._sb||!this._uid){showMsg('Nicht angemeldet — bitte neu einloggen',false);return;}
+    if(!this._sb||!this._uid){showMsg('Nicht angemeldet - bitte neu einloggen',false);return;}
     const orig=btn?btn.innerHTML:'';
     if(btn){btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-circle-notch fa-spin"></i> Speichern…';}
     if(msg)msg.style.display='none';

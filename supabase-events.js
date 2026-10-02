@@ -1,5 +1,5 @@
 /**
- * ROOTS Team-Kalender – HTTP zur Edge Function (kein Anon-Key im Browser).
+ * ROOTS Team-Kalender - HTTP zur Edge Function (kein Anon-Key im Browser).
  */
 import { TEAM_KALENDER_API_URL } from "./config.js";
 
